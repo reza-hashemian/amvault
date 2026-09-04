@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Vault data — never commit secrets, even encrypted ones.
+data/
+*.kdbx
+*.amv
+*.key
+*.bak
+
+# Conflict copies produced when two devices edited the vault between syncs.
+*.conflict-*
+*.mine-*
+
+# Editor and OS noise.
+.vscode/
+.idea/
+*.swp
+.DS_Store

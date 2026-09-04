@@ -1,0 +1,10 @@
+# Core: KeePass format support and its crypto backend.
+pykeepass>=4.2.0
+cryptography>=42.0
+argon2-cffi>=23.1
+
+# Desktop GUI. Not needed if you only use the CLI.
+PySide6>=6.6
+
+# Clipboard helper.
+pyperclip>=1.8

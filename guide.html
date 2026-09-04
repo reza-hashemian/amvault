@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="راهنمای کامل amvault — هر بخش کِی به کار می‌آید، از ساخت گاوصندوق تا کلید SSH موقت و سینک با گوشی.">
+<title>راهنمای amvault</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Vazirmatn:wght@300;400;500;700&display=swap">
+
+<style>
+:root {
+  --ground:      #F7F8FA;
+  --surface:     #FFFFFF;
+  --surface-2:   #EDF0F5;
+  --line:        #D6DBE4;
+  --line-soft:   #E4E8EF;
+  --ink:         #1A1D24;
+  --ink-soft:    #5B6373;
+  --ink-faint:   #858D9C;
+  --accent:      #2D6FD4;
+  --accent-soft: #E8F0FC;
+  --safe:        #1F7A38;
+  --safe-soft:   #E6F4EA;
+  --warn:        #9A5B12;
+  --warn-soft:   #FBF0DF;
+  --danger:      #B3261E;
+  --term-bg:     #12151B;
+  --term-ink:    #DDE2EA;
+  --term-dim:    #7C8698;
+  --term-accent: #7FB0F5;
+  --term-safe:   #6FCF87;
+
+  --step--1: 0.8125rem;
+  --step-0:  1rem;
+  --step-1:  1.1875rem;
+  --step-2:  1.5rem;
+  --step-3:  2rem;
+  --step-4:  2.75rem;
+
+  --rail: 15.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:      #0F1115;
+    --surface:     #171A21;
+    --surface-2:   #1E222B;
+    --line:        #2C313C;
+    --line-soft:   #232831;
+    --ink:         #D8DCE4;
+    --ink-soft:    #99A1B0;
+    --ink-faint:   #6D7686;
+    --accent:      #5B9CF8;
+    --accent-soft: #17263C;
+    --safe:        #52C46B;
+    --safe-soft:   #14251A;
+    --warn:        #D9822B;
+    --warn-soft:   #2A1E10;
+    --danger:      #E5675E;
+    --term-bg:     #0A0C10;
+    --term-ink:    #DDE2EA;
+    --term-dim:    #6D7686;
+    --term-accent: #7FB0F5;
+    --term-safe:   #6FCF87;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:      #0F1115;
+  --surface:     #171A21;
+  --surface-2:   #1E222B;
+  --line:        #2C313C;
+  --line-soft:   #232831;
+  --ink:         #D8DCE4;
+  --ink-soft:    #99A1B0;
+  --ink-faint:   #6D7686;
+  --accent:      #5B9CF8;
+  --accent-soft: #17263C;
+  --safe:        #52C46B;
+  --safe-soft:   #14251A;
+  --warn:        #D9822B;
+  --warn-soft:   #2A1E10;
+  --danger:      #E5675E;
+  --term-bg:     #0A0C10;
+  --term-ink:    #DDE2EA;
+  --term-dim:    #6D7686;
+  --term-accent: #7FB0F5;
+  --term-safe:   #6FCF87;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: Vazirmatn, "Segoe UI", system-ui, sans-serif;
+  font-size: var(--step-0);
+  line-height: 1.85;
+  direction: rtl;
+  -webkit-font-smoothing: antialiased;
+}
+
+code, kbd, .term, .cmd, .mono {
+  font-family: "Space Mono", ui-monospace, "DejaVu Sans Mono", monospace;
+}
+
+/* ---------- shell ---------- */
+.shell {
+  display: grid;
+  grid-template-columns: 1fr var(--rail);
+  gap: 3.5rem;
+  max-width: 74rem;
+  margin: 0 auto;
+  padding: 0 2rem 6rem;
+}
+
+main { min-width: 0; max-width: 44rem; }
+
+/* ---------- masthead ---------- */
+.masthead {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 3.5rem;
+  padding: 4.5rem 0 2.5rem;
+}
+.wordmark {
+  font-family: "Space Mono", monospace;
+  font-size: var(--step-4);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.4rem;
+  direction: ltr;
+  text-align: right;
+  color: var(--ink);
+}
+.wordmark::before {
+  content: "$ ";
+  color: var(--accent);
+}
+.masthead p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--step-1);
+  max-width: 34rem;
+  text-wrap: balance;
+}
+.masthead .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  direction: rtl;
+}
+.chip {
+  font-family: "Space Mono", monospace;
+  font-size: var(--step--1);
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 2rem;
+  color: var(--ink-soft);
+  background: var(--surface);
+  direction: ltr;
+}
+
+/* ---------- rail ---------- */
+.rail {
+  position: sticky;
+  top: 2rem;
+  align-self: start;
+  height: fit-content;
+  padding-top: 5.5rem;
+  font-size: var(--step--1);
+}
+.rail h2 {
+  font-family: "Space Mono", monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  margin: 0 0 1rem;
+  font-weight: 700;
+  direction: ltr;
+  text-align: right;
+}
+.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
+.rail a {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.4rem 0.7rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-radius: 5px;
+  border-right: 2px solid transparent;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+.rail a:hover, .rail a:focus-visible {
+  background: var(--surface);
+  color: var(--ink);
+  border-right-color: var(--accent);
+}
+.rail a .n {
+  font-family: "Space Mono", monospace;
+  font-size: 0.7rem;
+  color: var(--ink-faint);
+  min-width: 1.1rem;
+}
+
+/* ---------- sections ---------- */
+section { margin-bottom: 4.5rem; scroll-margin-top: 2rem; }
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.85rem;
+  margin-bottom: 0.4rem;
+}
+.sec-num {
+  font-family: "Space Mono", monospace;
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: var(--accent);
+  direction: ltr;
+}
+h2.sec-title {
+  font-size: var(--step-2);
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.sec-lede {
+  color: var(--ink-soft);
+  margin: 0 0 1.75rem;
+  max-width: 38rem;
+}
+
+h3 {
+  font-size: var(--step-1);
+  font-weight: 700;
+  margin: 2.25rem 0 0.6rem;
+  letter-spacing: -0.005em;
+}
+p { margin: 0 0 1rem; }
+p:last-child { margin-bottom: 0; }
+
+a.link { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+/* ---------- when/do/get triplet ---------- */
+.task {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+.task-when {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.85rem 1.1rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: var(--step--1);
+}
+.task-when b {
+  font-family: "Space Mono", monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+  direction: ltr;
+  white-space: nowrap;
+  padding-top: 0.15rem;
+}
+.task-body { padding: 1.1rem; }
+.task-body > p:first-child { margin-top: 0; }
+
+/* ---------- terminal ---------- */
+.term {
+  direction: ltr;
+  text-align: left;
+  background: var(--term-bg);
+  color: var(--term-ink);
+  border-radius: 8px;
+  padding: 1rem 1.15rem;
+  font-size: 0.84rem;
+  line-height: 1.75;
+  overflow-x: auto;
+  margin: 1rem 0;
+  border: 1px solid var(--line-soft);
+}
+.term div { white-space: pre; }
+.term .p  { color: var(--term-accent); user-select: none; }
+.term .c  { color: var(--term-dim); }
+/* Persian comments need the Arabic-script face (Space Mono has no coverage, so
+   letters would render unjoined) and their own embedding, or a trailing RTL run
+   reorders against the LTR command it annotates. */
+.term .fa {
+  font-family: Vazirmatn, "Segoe UI", sans-serif;
+  color: var(--term-dim);
+  direction: rtl;
+  unicode-bidi: isolate;
+  font-size: 0.92em;
+}
+.term .o  { color: var(--term-dim); }
+.term .ok { color: var(--term-safe); }
+.task-body .term:first-child { margin-top: 0; }
+.task-body .term:last-child  { margin-bottom: 0; }
+
+code:not(.term code) {
+  direction: ltr;
+  display: inline-block;
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: 0.05em 0.4em;
+  font-size: 0.86em;
+}
+
+kbd {
+  direction: ltr;
+  display: inline-block;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0.1em 0.45em;
+  font-size: 0.8em;
+  color: var(--ink);
+}
+
+/* ---------- callouts ---------- */
+.note {
+  border-right: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 8px 8px 0;
+  padding: 0.95rem 1.15rem;
+  margin: 1.5rem 0;
+  font-size: 0.94rem;
+}
+.note.warn { border-right-color: var(--warn); background: var(--warn-soft); }
+.note.safe { border-right-color: var(--safe); background: var(--safe-soft); }
+.note b { display: block; margin-bottom: 0.2rem; }
+.note.warn b { color: var(--warn); }
+.note.safe b { color: var(--safe); }
+.note.plain b { color: var(--accent); }
+.note p:last-child { margin-bottom: 0; }
+
+/* ---------- tables ---------- */
+.tw { overflow-x: auto; margin: 1.25rem 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 30rem;
+}
+th, td {
+  text-align: right;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: top;
+}
+th {
+  font-family: "Space Mono", monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+  font-weight: 700;
+  border-bottom-color: var(--line);
+  white-space: nowrap;
+}
+td code { white-space: nowrap; }
+tbody tr:last-child td { border-bottom: none; }
+
+/* ---------- field map ---------- */
+.cats { display: grid; gap: 0.75rem; margin: 1.5rem 0; }
+.cat {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0.9rem 1.1rem;
+  background: var(--surface);
+}
+.cat-top {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.cat-top strong { font-size: 1rem; }
+.cat-top .id {
+  font-family: "Space Mono", monospace;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  direction: ltr;
+}
+.cat-use { font-size: 0.88rem; color: var(--ink-soft); margin: 0 0 0.6rem; }
+.fields { display: flex; flex-wrap: wrap; gap: 0.3rem; direction: ltr; justify-content: flex-end; }
+.f {
+  font-family: "Space Mono", monospace;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  border: 1px solid var(--line-soft);
+}
+.f.sec {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: transparent;
+}
+.f.sec::after { content: " ●"; font-size: 0.6em; vertical-align: 0.15em; }
+
+/* ---------- keys ---------- */
+.keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0.5rem; margin: 1.25rem 0; }
+.key {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  background: var(--surface);
+  font-size: 0.86rem;
+}
+
+/* ---------- flow ---------- */
+.flow {
+  display: grid;
+  gap: 0;
+  margin: 1.5rem 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.flow-step {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 0.9rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-soft);
+  align-items: start;
+}
+.flow-step:last-child { border-bottom: none; }
+.flow-step .dot {
+  font-family: "Space Mono", monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 50%;
+  width: 1.7rem;
+  height: 1.7rem;
+  display: grid;
+  place-items: center;
+  direction: ltr;
+}
+.flow-step p { margin: 0; font-size: 0.92rem; }
+.flow-step p b { display: block; }
+
+/* ---------- footer ---------- */
+footer {
+  border-top: 1px solid var(--line);
+  margin-top: 4rem;
+  padding-top: 1.75rem;
+  color: var(--ink-faint);
+  font-size: var(--step--1);
+}
+footer code { font-size: 0.85em; }
+
+hr.rule { border: none; border-top: 1px solid var(--line-soft); margin: 2.5rem 0; }
+
+@media (max-width: 62rem) {
+  .shell { grid-template-columns: 1fr; gap: 0; padding: 0 1.25rem 4rem; }
+  .rail {
+    position: static;
+    padding-top: 0;
+    margin-bottom: 3rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 1.5rem;
+  }
+  .rail ol { grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); display: grid; }
+  main { max-width: none; }
+  .masthead { padding-top: 3rem; }
+  .wordmark { font-size: var(--step-3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+html { scroll-behavior: smooth; }
+a:focus-visible, .rail a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <main>
+
+    <header class="masthead">
+      <h1 class="wordmark">amvault</h1>
+      <p>گاوصندوق آفلاین برای رمزها، کلیدهای SSH، توکن‌ها و تجهیزات شبکه. این راهنما می‌گوید هر بخش <em>کِی</em> به کار می‌آید — نه فقط اینکه چه کاری می‌کند.</p>
+      <div class="meta">
+        <span class="chip">KDBX 4 · Argon2id</span>
+        <span class="chip">۹۷ تست</span>
+        <span class="chip">قابل حمل روی فلش</span>
+        <span class="chip">سازگار با KeePassDX</span>
+      </div>
+    </header>
+
+    <!-- 1 -->
+    <section id="s1">
+      <div class="sec-head"><span class="sec-num">۰۱</span><h2 class="sec-title">فایل‌ها کجا هستند</h2></div>
+      <p class="sec-lede">قبل از هر چیز این را بدان، چون همه‌ی تصمیم‌های بکاپ و انتقال به گوشی به آن وابسته است.</p>
+
+      <p><strong>یک فایل داده داری، نه دو تا.</strong> رمزنگاری لایه‌ی جداگانه‌ای نیست — خودِ <code>vault.kdbx</code> رمزنگاری‌شده است.</p>
+
+      <div class="term">
+<div><span class="c">[03]-account-manager/</span></div>
+<div>├── data/</div>
+<div>│   ├── vault.kdbx      <span class="fa">تنها فایل داده‌ات</span></div>
+<div>│   └── backups/        <span class="fa">نسخه‌های زمان‌دار</span></div>
+<div>├── amvault-gui.py      <span class="fa">اپ گرافیکی</span></div>
+<div>├── amvault.py          <span class="fa">دستورات ترمینال</span></div>
+<div>└── vault-admin.sh      <span class="fa">بکاپ / ریست / بازگردانی</span></div>
+      </div>
+
+      <p>چون همه‌چیز کنار هم است، کل این پوشه را روی فلش کپی کن و همان‌جا اجرا شود — اپ، گاوصندوق و بکاپ‌ها با هم. پوشه‌ی <code>data/</code> در <code>.gitignore</code> است، پس هیچ رازی به مخزن گیت نمی‌رسد.</p>
+
+      <div class="note warn">
+        <b>اگر keyfile بسازی، فایل دوم هم داری</b>
+        <p><code>vault.key</code> داده‌ی تو نیست؛ کلیدی است که بدون آن گاوصندوق باز نمی‌شود. آن را <em>جدا از</em> گاوصندوق نگه دار — اگر کنار هم باشند، عملاً هیچ محافظت اضافه‌ای نداده‌ای.</p>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section id="s2">
+      <div class="sec-head"><span class="sec-num">۰۲</span><h2 class="sec-title">شروع کار</h2></div>
+      <p class="sec-lede">یک بار انجام می‌شود. رمز اصلی تنها چیزی است که از همه‌چیز محافظت می‌کند و قابل بازیابی نیست.</p>
+
+      <div class="term">
+<div><span class="p">$</span> cd "[01]-works/[16]-django-projects/[03]-account-manager"</div>
+<div><span class="p">$</span> ./.venv/bin/python amvault-gui.py</div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-step"><span class="dot">۱</span><p><b>رمز اصلی را انتخاب کن</b>نوار سبز یعنی به‌قدر کافی قوی است. یک عبارت چندکلمه‌ای هم امن است هم روی گوشی راحت تایپ می‌شود.</p></div>
+        <div class="flow-step"><span class="dot">۲</span><p><b>فعلاً keyfile نزن</b>تیک «Also require a key file» را نزده بگذار. هر وقت جریان کار دستت آمد می‌توانی اضافه‌اش کنی.</p></div>
+        <div class="flow-step"><span class="dot">۳</span><p><b>Create vault</b>فایل ساخته می‌شود و مستقیم وارد صفحه‌ی اصلی می‌شوی.</p></div>
+      </div>
+
+      <div class="note plain">
+        <b>چرا Argon2id کمی کند است</b>
+        <p>باز کردن گاوصندوق حدود نیم ثانیه طول می‌کشد. این عمدی است: همان نیم ثانیه، حدس‌زدن میلیونی رمز را برای مهاجم غیرعملی می‌کند.</p>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section id="s3">
+      <div class="sec-head"><span class="sec-num">۰۳</span><h2 class="sec-title">دسته‌ها — کدام را کِی</h2></div>
+      <p class="sec-lede">دسته تعیین می‌کند چه فیلدهایی پیشنهاد شود و کدام‌ها پنهان بمانند. نقطه‌ی نارنجی یعنی آن فیلد به‌طور پیش‌فرض ماسک می‌شود.</p>
+
+      <div class="cats">
+        <div class="cat">
+          <div class="cat-top"><strong>Login</strong><span class="id">login</span></div>
+          <p class="cat-use">هر چیزی که با نام کاربری و رمز وارد می‌شوی — سایت، پنل، سرویس ابری. اگر آن سرویس ۲FA دارد، seed را هم همین‌جا بگذار.</p>
+          <div class="fields"><span class="f">username</span><span class="f sec">password</span><span class="f">url</span><span class="f sec">totp_secret</span></div>
+        </div>
+
+        <div class="cat">
+          <div class="cat-top"><strong>SSH Key / Certificate</strong><span class="id">ssh_key</span></div>
+          <p class="cat-use">کلید سرور و گواهی. فایل کلید را به‌عنوان اتچمنت اضافه کن تا بعداً بتوانی مستقیم به ssh-agent بدهی.</p>
+          <div class="fields"><span class="f">username</span><span class="f">host</span><span class="f">port</span><span class="f">key_type</span><span class="f sec">passphrase</span><span class="f">fingerprint</span></div>
+        </div>
+
+        <div class="cat">
+          <div class="cat-top"><strong>API Key / Token</strong><span class="id">api_key</span></div>
+          <p class="cat-use">توکن سرویس‌ها. فیلد <code>expires</code> را پر کن تا بدانی کِی باید تمدید شود.</p>
+          <div class="fields"><span class="f">service</span><span class="f sec">key</span><span class="f sec">secret</span><span class="f">endpoint</span><span class="f">expires</span></div>
+        </div>
+
+        <div class="cat">
+          <div class="cat-top"><strong>Network Device</strong><span class="id">network</span></div>
+          <p class="cat-use">روتر، سوییچ، اکسس‌پوینت. کامل‌ترین دسته — دقیقاً برای کار شبکه ساخته شده.</p>
+          <div class="fields"><span class="f">device_type</span><span class="f">vendor</span><span class="f">model</span><span class="f">mgmt_ip</span><span class="f">mgmt_port</span><span class="f">username</span><span class="f sec">password</span><span class="f sec">enable_password</span><span class="f sec">snmp_community</span><span class="f">wifi_ssid</span><span class="f sec">wifi_psk</span><span class="f">location</span><span class="f">firmware</span></div>
+        </div>
+
+        <div class="cat">
+          <div class="cat-top"><strong>Secure Note</strong><span class="id">note</span></div>
+          <p class="cat-use">هر چیزی که در قالب بالا نمی‌گنجد — کدهای بازیابی، پاسخ سوالات امنیتی، یادداشت محرمانه.</p>
+          <div class="fields"><span class="f sec">content</span></div>
+        </div>
+      </div>
+
+      <div class="note plain">
+        <b>دسته را بعداً هم می‌شود عوض کرد</b>
+        <p>با تغییر دسته، فیلدها دوباره چیده می‌شوند و ماسک‌شدن‌ها با دسته‌ی جدید هماهنگ می‌شود. در فایل هم ورودی به گروه متناظر منتقل می‌شود، پس روی گوشی هم در پوشه‌ی درست دیده می‌شود.</p>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section id="s4">
+      <div class="sec-head"><span class="sec-num">۰۴</span><h2 class="sec-title">کار روزمره در اپ</h2></div>
+      <p class="sec-lede">چیزهایی که هر روز لازم می‌شوند.</p>
+
+      <div class="task">
+        <div class="task-when"><b>کِی</b><span>می‌خواهی یک ورودی جدید بسازی</span></div>
+        <div class="task-body">
+          <p><kbd>Ctrl+N</kbd> یا دکمه‌ی <strong>+ New entry</strong>. دسته را انتخاب کن، فیلد <strong>Name</strong> را پر کن، بعد <strong>Save</strong>.</p>
+          <p><strong>تا Save نزنی هیچ‌چیز ذخیره نمی‌شود</strong> — ورودی‌های نیمه‌کاره در گاوصندوق باقی نمی‌مانند. بدون نام هم ذخیره نمی‌شود.</p>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-when"><b>کِی</b><span>می‌خواهی رمزی را جایی بچسبانی</span></div>
+        <div class="task-body">
+          <p>دکمه‌ی <code>⧉</code> کنار فیلد. بعد از <strong>۳۰ ثانیه</strong> کلیپ‌بورد خودکار پاک می‌شود — و فقط اگر هنوز همان مقدار در آن باشد، تا چیزی که بعداً کپی کرده‌ای پاک نشود.</p>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-when"><b>کِی</b><span>می‌خواهی فایل کلید SSH را ذخیره کنی</span></div>
+        <div class="task-body">
+          <p>دسته را <code>ssh_key</code> کن، بعد <strong>Attach file…</strong> و مسیر <code>~/.ssh/id_ed25519</code> را بده. سپس <strong>Save</strong>.</p>
+          <p>سقف هر فایل ۵ مگابایت است؛ کلیدها و گواهی‌ها خیلی کوچک‌تر از این‌اند.</p>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-when"><b>کِی</b><span>دنبال چیزی می‌گردی</span></div>
+        <div class="task-body">
+          <p><kbd>Ctrl+F</kbd>. جست‌وجو در عنوان، برچسب، یادداشت و فیلدهای غیرمحرمانه انجام می‌شود.</p>
+          <p><strong>مقادیر محرمانه عمداً جست‌وجو نمی‌شوند</strong> — وگرنه کسی با دسترسی به صفحه می‌توانست با تایپ حدس‌هایش بفهمد کدام درست است.</p>
+        </div>
+      </div>
+
+      <div class="keys">
+        <div class="key"><span>ورودی جدید</span><kbd>Ctrl+N</kbd></div>
+        <div class="key"><span>ذخیره</span><kbd>Ctrl+S</kbd></div>
+        <div class="key"><span>جست‌وجو</span><kbd>Ctrl+F</kbd></div>
+        <div class="key"><span>قفل کردن</span><kbd>Ctrl+L</kbd></div>
+        <div class="key"><span>بکاپ</span><kbd>Ctrl+B</kbd></div>
+        <div class="key"><span>خروج</span><kbd>Ctrl+Q</kbd></div>
+        <div class="key"><span>کپی نام کاربری</span><kbd>Ctrl+Shift+U</kbd></div>
+        <div class="key"><span>کپی رمز</span><kbd>Ctrl+Shift+C</kbd></div>
+      </div>
+
+      <div class="note safe">
+        <b>قفل خودکار پس از ۱۰ دقیقه بی‌کاری</b>
+        <p>قبل از قفل‌شدن ذخیره می‌کند، پس کاری از دست نمی‌رود. قفل که شد، به صفحه‌ی ورود برمی‌گردی — اپ بسته نمی‌شود.</p>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="s5">
+      <div class="sec-head"><span class="sec-num">۰۵</span><h2 class="sec-title">کد دو مرحله‌ای</h2></div>
+      <p class="sec-lede">جایگزین Google Authenticator. کدها با یک کتابخانه‌ی مستقل مقایسه و تأیید شده‌اند.</p>
+
+      <p>وقتی سرویسی ۲FA را فعال می‌کند، کنار QR یک گزینه‌ی «enter manually» دارد که رشته‌ای شبیه <code>JBSWY3DPEHPK3PXP</code> نشان می‌دهد. آن را در فیلد <code>totp_secret</code> بگذار و <strong>Save</strong> بزن.</p>
+
+      <p>بلافاصله بالای فرم کارت کد زنده ظاهر می‌شود؛ هر ۳۰ ثانیه عوض می‌شود و شمارنده در ۵ ثانیه‌ی آخر قرمز می‌شود.</p>
+
+      <div class="term">
+<div><span class="fa"># از ترمینال</span></div>
+<div><span class="p">$</span> ./.venv/bin/python amvault.py totp "GitHub"</div>
+<div><span class="o">447336   (valid 26s)</span></div>
+      </div>
+
+      <p>فرقی نمی‌کند رشته با فاصله باشد، حروف کوچک باشد، یا کل لینک <code>otpauth://…</code> را کپی کنی — همه پذیرفته می‌شود.</p>
+
+      <div class="note warn">
+        <b>این کار بخشی از فلسفه‌ی ۲FA را خنثی می‌کند</b>
+        <p>منطق دو عاملی این است که رمز «چیزی که می‌دانی» باشد و کد «چیزی که داری». وقتی هر دو در یک گاوصندوق‌اند، دیگر دو عامل مستقل نیستند.</p>
+        <p><strong>سرویس‌های عادی</strong> (گیت‌هاب کاری، پنل‌ها، سرویس ابری): این‌جا بگذار، راحتی‌اش می‌ارزد. <strong>حساب‌های حیاتی</strong> (بانک، ایمیل اصلی، کیف پول رمزارز): seed را این‌جا نگذار.</p>
+        <p>کدهای بازیابی سرویس را هم حتماً جایی جدا نگه دار.</p>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="s6">
+      <div class="sec-head"><span class="sec-num">۰۶</span><h2 class="sec-title">کلید SSH موقت</h2></div>
+      <p class="sec-lede">کلید را برای مدت یک کار به ssh-agent می‌دهد و بعد پس می‌گیرد. کلید هرگز روی دیسک نمی‌نشیند.</p>
+
+      <div class="task">
+        <div class="task-when"><b>کِی</b><span>یک دستور می‌زنی و کارت تمام است</span></div>
+        <div class="task-body">
+          <div class="term">
+<div><span class="p">$</span> amvault ssh GitHub <span class="c">--</span> git push origin main</div>
+<div><span class="o">Loaded id_ed25519 from 'GitHub' into ssh-agent.</span></div>
+<div><span class="o">  SHA256:BGQNNTV7/gfhD8pR0sRo1xwVhbZ69HcMcUMA5tLdojI</span></div>
+<div><span class="o">  1 existing agent key(s) left untouched.</span></div>
+<div><span class="o">  …</span></div>
+<div><span class="ok">Removed id_ed25519 from ssh-agent.</span></div>
+          </div>
+          <p>هرچه بعد از <code>--</code> بیاید همان دستور است. پاک‌سازی حتی اگر دستور شکست بخورد یا <kbd>Ctrl+C</kbd> بزنی هم اجرا می‌شود.</p>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-when"><b>کِی</b><span>می‌خواهی وارد سرور شوی</span></div>
+        <div class="task-body">
+          <div class="term">
+<div><span class="p">$</span> amvault ssh "Prod Server" <span class="c">--</span> ssh root@10.0.0.5</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="task-when"><b>کِی</b><span>چند دستور پشت هم داری</span></div>
+        <div class="task-body">
+          <div class="term">
+<div><span class="p">$</span> amvault ssh GitHub          <span class="fa"># شل باز می‌کند؛ exit که بزنی پاک می‌شود</span></div>
+<div></div>
+<div><span class="p">$</span> amvault ssh GitHub --keep   <span class="fa"># لود بماند</span></div>
+<div><span class="p">$</span> amvault ssh GitHub --unload <span class="fa"># … و بعد پاکش کن</span></div>
+<div><span class="p">$</span> amvault ssh-list             <span class="fa"># الان چه چیزی در agent است</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="note safe">
+        <b>کلیدهای خودت هرگز دست‌کاری نمی‌شوند</b>
+        <p>ssh-agent چند کلید را همزمان نگه می‌دارد و به‌ترتیب امتحان می‌کند. کلید گاوصندوق <em>کنار</em> کلید همیشگی‌ات اضافه می‌شود و با حذفش، agent دقیقاً به حالت قبل برمی‌گردد. پوشه‌ی <code>~/.ssh/</code> اصلاً لمس نمی‌شود.</p>
+      </div>
+
+      <div class="task">
+        <div class="task-when"><b>کِی</b><span>می‌خواهی از داخل اپ به سرور وصل شوی</span></div>
+        <div class="task-body">
+          <p>هر ورودی که فیلد <code>host</code> یا <code>mgmt_ip</code> داشته باشد، بالای فیلدهایش یک نوار <strong>اتصال</strong> می‌گیرد. یک کلیک: کلید همان ورودی در ssh-agent بار می‌شود و ترمینال با دستور <code>ssh</code> باز می‌شود.</p>
+          <p>آدرس، پورت، نام کاربری و کلید همه از خود ورودی خوانده می‌شوند — بدون کپی‌پیست.</p>
+        </div>
+      </div>
+
+      <div class="note plain">
+        <b>از کجا می‌فهمد کدام کلید برای کدام سرور است؟</b>
+        <p>لازم نیست بفهمد: کلید به‌عنوان اتچمنت <em>روی همان ورودی</em> ذخیره شده که آدرس سرور در آن است. یک ورودی یعنی یک سرور، با آدرس و کاربر و کلید خودش، کنار هم.</p>
+        <p>خودِ ssh-agent هیچ نگاشتی از «کدام کلید برای کدام سرور» ندارد — همه‌ی کلیدها را به‌ترتیب پیشنهاد می‌دهد. اگر چند کلید بار شده باشد، سرور ممکن است قبل از رسیدن به کلید درست به سقف تلاش‌هایش برسد. برای همین اتصال با <code>IdentitiesOnly</code> فقط به کلید همان ورودی محدود می‌شود.</p>
+      </div>
+
+      <div class="note safe">
+        <b>فقط فایل کلید را اتچ کن — بقیه‌اش خودکار است</b>
+        <p>تشخیص از روی <em>محتوای</em> فایل انجام می‌شود، نه نامش. پس کلید خصوصی با هر نامی (<code>github_backup</code>، <code>id_rsa</code>، …) شناخته می‌شود، و فایل عمومی حتی اگر پسوند <code>.pub</code> نداشته باشد کنار گذاشته می‌شود.</p>
+        <p>می‌توانی فایل عمومی و یادداشت را هم کنارش نگه داری؛ نادیده گرفته می‌شوند. فقط اگر <strong>دو کلید خصوصی</strong> در یک ورودی باشد می‌پرسد کدام را می‌خواهی — با <code>--name</code> مشخصش کن.</p>
+      </div>
+
+      <div class="note plain">
+        <b>سه لایه‌ی محافظت</b>
+        <p>کلید در <code>/dev/shm</code> (حافظه‌ی رم) نوشته می‌شود، به ssh-add داده و بلافاصله حذف می‌شود · پاک‌سازی در بلوک <code>finally</code> است پس با وقفه هم اجرا می‌شود · به agent هم گفته می‌شود بعد از ۱۵ دقیقه خودش رهایش کند.</p>
+        <p>اگر کلید رمز دارد، آن را در فیلد <code>passphrase</code> همان ورودی بگذار تا خودکار داده شود.</p>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section id="s7">
+      <div class="sec-head"><span class="sec-num">۰۷</span><h2 class="sec-title">روی گوشی</h2></div>
+      <p class="sec-lede">همان فایل، بدون سرور و بدون واسط. چون فرمت استاندارد KeePass است.</p>
+
+      <div class="term">
+<div>Phone <span class="c">(KeePassDX)</span>  ←→  vault.kdbx  ←→  Desktop <span class="c">(amvault)</span></div>
+      </div>
+
+      <div class="tw"><table>
+        <thead><tr><th>پلتفرم</th><th>اپ پیشنهادی</th></tr></thead>
+        <tbody>
+          <tr><td>اندروید</td><td><strong>KeePassDX</strong> یا Keepass2Android — هر دو متن‌باز</td></tr>
+          <tr><td>iOS</td><td><strong>Strongbox</strong> یا KeePassium</td></tr>
+          <tr><td>دسکتاپ دیگر</td><td>همین اپ، یا KeePassXC</td></tr>
+        </tbody>
+      </table></div>
+
+      <p>فایل را با Syncthing، کابل USB یا هر فضای ابری جابه‌جا کن — رمزنگاری‌شده است، پس ابر نامطمئن هم مشکلی ندارد.</p>
+
+      <h3>روی گوشی چه می‌بینی</h3>
+      <div class="tw"><table>
+        <thead><tr><th>در amvault</th><th>در KeePass</th><th>نتیجه روی گوشی</th></tr></thead>
+        <tbody>
+          <tr><td>دسته</td><td>Group</td><td>پوشه‌بندی ورودی‌ها</td></tr>
+          <tr><td>username / password / url</td><td>فیلدهای استاندارد</td><td>پرکردن خودکار کار می‌کند</td></tr>
+          <tr><td>فیلدهای دیگر</td><td>Custom fields</td><td>به‌عنوان فیلد اضافه</td></tr>
+          <tr><td>فیلدهای محرمانه</td><td>Protected fields</td><td>ماسک‌شده، مثل رمز</td></tr>
+          <tr><td><code>totp_secret</code></td><td><code>otp</code></td><td>گوشی همان کد را می‌سازد</td></tr>
+          <tr><td>اتچمنت‌ها</td><td>Binaries</td><td>قابل دانلود از ورودی</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="note warn">
+        <b>قانون طلایی سینک: یک طرف در یک زمان</b>
+        <p>اگر همزمان روی گوشی و دسکتاپ ویرایش کنی، هنگام ذخیره هشدار می‌گیری و از تو می‌پرسد کدام نسخه بماند — نسخه‌ی دیگر هم به‌صورت <code>vault.kdbx.conflict-…</code> بکاپ می‌شود، پس چیزی از بین نمی‌رود.</p>
+        <p><strong>ادغام خودکار وجود ندارد.</strong> دو نسخه‌ی مستقل را نمی‌شود بدون حدس‌زدن آشتی داد، پس تصمیم با توست. عادت عملی: بگذار سینک تمام شود، بعد طرف دیگر را ویرایش کن.</p>
+      </div>
+
+      <div class="note plain">
+        <b>keyfile روی گوشی</b>
+        <p>اگر keyfile را هم روی گوشی بگذاری، هر دو عامل روی یک دستگاه‌اند و عامل دوم بی‌معنا می‌شود. آن‌جا رمز اصلی قوی به‌همراه قفل بایومتریک خود اپ انتخاب بهتری است.</p>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section id="s8">
+      <div class="sec-head"><span class="sec-num">۰۸</span><h2 class="sec-title">بکاپ، بازگردانی، ریست</h2></div>
+      <p class="sec-lede">هر عملیات مخرب، قبل از حذف یک نسخه بایگانی می‌کند.</p>
+
+      <div class="term">
+<div><span class="p">$</span> ./vault-admin.sh status          <span class="fa"># چه چیزی هست و کجا</span></div>
+<div><span class="p">$</span> ./vault-admin.sh backup          <span class="fa"># نسخه‌ی زمان‌دار رمزنگاری‌شده</span></div>
+<div><span class="p">$</span> ./vault-admin.sh list-backups</div>
+<div><span class="p">$</span> ./vault-admin.sh restore &lt;file&gt;  <span class="fa"># نسخه‌ی فعلی را اول بایگانی می‌کند</span></div>
+<div><span class="p">$</span> ./vault-admin.sh reset           <span class="fa"># از نو (باید RESET تایپ کنی)</span></div>
+      </div>
+
+      <div class="task">
+        <div class="task-when"><b>کِی</b><span>می‌خواهی از نو شروع کنی</span></div>
+        <div class="task-body">
+          <p><code>reset</code> باید عبارت <code>RESET</code> را تایپ کنی. قبل از حذف، یک نسخه در <code>data/backups/</code> بایگانی می‌شود — پس اگر پشیمان شدی و رمز را می‌دانی، برگشت‌پذیر است.</p>
+          <p>فایل‌های conflict باقی‌مانده هم پاک می‌شوند، اما <strong>keyfile هرگز حذف نمی‌شود</strong>؛ حذفش دسترسی به همه‌ی بکاپ‌های قبلی را از بین می‌برد.</p>
+        </div>
+      </div>
+
+      <div class="note safe">
+        <b>بکاپ‌ها رمزنگاری‌شده‌اند</b>
+        <p>پس بگذارشان هر جا — فلش، تلگرام، هر ابری. هر بکاپ با همان رمزی باز می‌شود که گاوصندوق در لحظه‌ی بکاپ داشته است.</p>
+      </div>
+
+      <div class="note warn">
+        <b>keyfile با این دستورات بکاپ نمی‌شود</b>
+        <p>خودت باید از آن نسخه بگیری، آن هم جایی غیر از محل گاوصندوق — وگرنه فلسفه‌اش از بین می‌رود.</p>
+      </div>
+    </section>
+
+    <!-- 9 -->
+    <section id="s9">
+      <div class="sec-head"><span class="sec-num">۰۹</span><h2 class="sec-title">دستورات ترمینال</h2></div>
+      <p class="sec-lede">برای اسکریپت‌نویسی و کارهای سریع. با <code>--vault</code> می‌توانی مسیر دیگری بدهی.</p>
+
+      <div class="term">
+<div><span class="fa"># یک بار در ~/.zshrc بگذار تا کوتاه شود</span></div>
+<div><span class="p">$</span> alias amvault='"$HOME/path/to/.venv/bin/python" "$HOME/path/to/amvault.py"'</div>
+      </div>
+
+      <div class="tw"><table>
+        <thead><tr><th>دستور</th><th>کِی به کار می‌آید</th></tr></thead>
+        <tbody>
+          <tr><td><code>list</code></td><td>دیدن همه؛ با <code>-c network</code> فقط یک دسته</td></tr>
+          <tr><td><code>show &lt;نام&gt;</code></td><td>جزئیات یک ورودی — محرمانه‌ها ماسک؛ با <code>-s</code> آشکار</td></tr>
+          <tr><td><code>get &lt;نام&gt; &lt;فیلد&gt;</code></td><td>فقط یک مقدار چاپ می‌کند — همانی که اسکریپت‌ها می‌خواهند</td></tr>
+          <tr><td><code>add &lt;نام&gt;</code></td><td>ورودی جدید؛ <code>-g 32</code> رمز می‌سازد، <code>-p password</code> بدون نمایش می‌پرسد</td></tr>
+          <tr><td><code>set &lt;نام&gt; &lt;فیلد&gt;</code></td><td>تغییر یک فیلد؛ با <code>-p</code> مقدار را پنهان می‌پرسد</td></tr>
+          <tr><td><code>totp &lt;نام&gt;</code></td><td>کد دو مرحله‌ای؛ <code>-q</code> فقط عدد را می‌دهد</td></tr>
+          <tr><td><code>ssh &lt;نام&gt;</code></td><td>کلید را موقت به agent می‌دهد</td></tr>
+          <tr><td><code>export &lt;نام&gt; &lt;فایل&gt; &lt;مقصد&gt;</code></td><td>اتچمنت را با دسترسی <code>0600</code> بیرون می‌نویسد</td></tr>
+          <tr><td><code>gen</code></td><td>ساخت رمز بدون نیاز به باز کردن گاوصندوق</td></tr>
+          <tr><td><code>stats</code></td><td>خلاصه‌ی تعداد ورودی‌ها و برچسب‌ها</td></tr>
+          <tr><td><code>passwd</code></td><td>تغییر رمز اصلی با نمک تازه</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>ساخت رمز</h3>
+      <div class="term">
+<div><span class="p">$</span> amvault gen -l 32              <span class="fa"># رشته‌ی تصادفی ۳۲ کاراکتری</span></div>
+<div><span class="p">$</span> amvault gen -w 5               <span class="fa"># عبارت پنج‌کلمه‌ای، برای تایپ روی گوشی</span></div>
+<div><span class="p">$</span> amvault gen -l 24 --readable   <span class="fa"># بدون Il1O0 که شبیه هم‌اند</span></div>
+      </div>
+
+      <div class="note warn">
+        <b>دو دستوری که باید با احتیاط استفاده شوند</b>
+        <p><code>dump</code> همه‌چیز را به‌صورت متن ساده بیرون می‌دهد و عمداً پرچم بلند <code>--i-understand-this-is-plaintext</code> می‌خواهد. <code>export</code> هم کپی رمزنگاری‌نشده می‌سازد — بعد از استفاده پاکش کن.</p>
+      </div>
+
+      <p>رمز از ترمینال پرسیده می‌شود، هرگز از آرگومان — چون خط فرمان برای پروسه‌های دیگر قابل دیدن است و در تاریخچه‌ی شل می‌ماند. برای اتوماسیون <code>AMVAULT_PASSWORD</code> پذیرفته می‌شود.</p>
+    </section>
+
+    <!-- 10 -->
+    <section id="s10">
+      <div class="sec-head"><span class="sec-num">۱۰</span><h2 class="sec-title">آنچه این اپ نمی‌تواند</h2></div>
+      <p class="sec-lede">محدودیت‌های واقعی. بهتر است بدانی تا اینکه فرض کنی وجود ندارند.</p>
+
+      <div class="tw"><table>
+        <thead><tr><th>محدودیت</th><th>معنایش برای تو</th></tr></thead>
+        <tbody>
+          <tr><td>ممیزی امنیتی نشده</td><td>فرمت KDBX و pykeepass پرکاربردند، اما کد اطرافشان بازبینی بیرونی نداشته. برای اسرار درجه‌یک، KeePassXC روی <em>همین فایل</em> گزینه‌ی آزموده‌تری است — چون فرمت مشترک است، می‌توانی هر دو را داشته باشی.</td></tr>
+          <tr><td>کلید از حافظه پاک نمی‌شود</td><td>رشته‌های پایتون تغییرناپذیرند؛ قفل‌کردن ارجاع را رها می‌کند اما بازنویسی تضمین نمی‌شود.</td></tr>
+          <tr><td>محافظت در برابر swap ندارد</td><td>داده‌ی رمزگشایی‌شده ممکن است به swap برسد. از swap رمزنگاری‌شده استفاده کن.</td></tr>
+          <tr><td>کلید لودشده در دسترس کل نشست است</td><td>تا وقتی در ssh-agent است، هر پروسه‌ای با کاربر تو می‌تواند از agent امضا بخواهد. این ذاتِ کار با agent است؛ <code>--keep</code> پنجره را بازتر می‌کند.</td></tr>
+          <tr><td>هر ذخیره کل فایل را بازنویسی می‌کند</td><td>اتچمنت بزرگ، ذخیره را کند و فایل سینک را سنگین می‌کند. سقف ۵ مگابایت است.</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="note warn">
+        <b>رمزنگاری در برابر سرقت محافظت می‌کند، نه در برابر خرابی دیسک</b>
+        <p>بکاپ بگیر. مرتب.</p>
+      </div>
+    </section>
+
+    <footer>
+      <p>ساخته‌شده با Argon2id و AES-256 در قالب KDBX 4 · ۹۷ تست شامل بردارهای رسمی RFC 6238، نگاشت کامل فیلدهای KeePass، تشخیص تعارض سینک و تضمین دست‌نخوردگی کلیدهای میزبان.</p>
+      <p>اجرای تست‌ها: <code>./.venv/bin/python -m unittest discover -s tests</code></p>
+    </footer>
+
+  </main>
+
+  <nav class="rail" aria-label="فهرست مطالب">
+    <h2>فهرست</h2>
+    <ol>
+      <li><a href="#s1"><span class="n">۰۱</span><span>فایل‌ها کجا هستند</span></a></li>
+      <li><a href="#s2"><span class="n">۰۲</span><span>شروع کار</span></a></li>
+      <li><a href="#s3"><span class="n">۰۳</span><span>دسته‌ها</span></a></li>
+      <li><a href="#s4"><span class="n">۰۴</span><span>کار روزمره</span></a></li>
+      <li><a href="#s5"><span class="n">۰۵</span><span>کد دو مرحله‌ای</span></a></li>
+      <li><a href="#s6"><span class="n">۰۶</span><span>کلید SSH موقت</span></a></li>
+      <li><a href="#s7"><span class="n">۰۷</span><span>روی گوشی</span></a></li>
+      <li><a href="#s8"><span class="n">۰۸</span><span>بکاپ و ریست</span></a></li>
+      <li><a href="#s9"><span class="n">۰۹</span><span>دستورات ترمینال</span></a></li>
+      <li><a href="#s10"><span class="n">۱۰</span><span>محدودیت‌ها</span></a></li>
+    </ol>
+  </nav>
+</div>
+</body>
+</html>
