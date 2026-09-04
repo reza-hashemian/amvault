@@ -27,9 +27,34 @@ REM working python.exe with no dependencies behind it. Test a real import.
 if not exist "%PYEXE%" goto :setup
 "%PYEXE%" -c "import PySide6, pykeepass" >nul 2>&1
 if not errorlevel 1 goto :launch
+
+REM The environment is incomplete. Before resuming, check it was not built from
+REM a free-threaded interpreter: that build inherits into the venv, so resuming
+REM would fail identically every time with no explanation.
+"%PYEXE%" -c "import sysconfig,sys; sys.exit(1 if sysconfig.get_config_var('Py_GIL_DISABLED') else 0)" >nul 2>&1
+if errorlevel 1 goto :badvenv
+
 echo   The last setup did not finish. Resuming where it stopped...
 echo.
 goto :install
+
+:badvenv
+echo   [X] This installation was built with the "free-threaded" build of
+echo       Python, which the encryption libraries cannot be installed for.
+echo.
+echo   To fix it:
+echo.
+echo     1. Install the STANDARD Python from https://www.python.org/downloads/
+echo        - not the version labelled "free-threaded" or ending in "t"
+echo     2. Tick "Add python.exe to PATH" during setup
+echo     3. Double-click  amvault-reset.bat
+echo     4. Double-click  amvault.bat
+echo.
+echo   Your vault in data\ is not affected by any of this.
+echo.
+start "" "https://www.python.org/downloads/"
+pause
+exit /b 1
 
 :setup
 
@@ -41,11 +66,37 @@ set "PYCMD="
 
 REM The py launcher ships with python.org installers and is the most reliable
 REM way to find a real Python, so try it before a bare `python`.
-py -3 --version >nul 2>&1
+REM
+REM -3 can select the free-threaded build (python3.13t), whose ABI cffi cannot
+REM compile against -- cryptography and argon2 both need cffi, so that build
+REM fails with a confusing "failed to build wheel" wall of text. Ask the
+REM launcher for a normal interpreter and verify it before accepting it.
+py -3 -c "import sysconfig,sys; sys.exit(1 if sysconfig.get_config_var('Py_GIL_DISABLED') else 0)" >nul 2>&1
 if not errorlevel 1 (
     set "PYCMD=py -3"
     goto :found
 )
+
+REM py -3 exists but points at a free-threaded build. Try specific versions
+REM instead. Written as flat lines rather than a for-loop: `goto` out of a loop
+REM and `if errorlevel` inside a parenthesised block are both unreliable here.
+call :trypy 3.13
+if defined PYCMD goto :found
+call :trypy 3.12
+if defined PYCMD goto :found
+call :trypy 3.11
+if defined PYCMD goto :found
+call :trypy 3.10
+if defined PYCMD goto :found
+goto :aftertrypy
+
+:trypy
+py -%1 -c "import sysconfig,sys; sys.exit(1 if sysconfig.get_config_var('Py_GIL_DISABLED') else 0)" >nul 2>&1
+if errorlevel 1 exit /b 0
+set "PYCMD=py -%1"
+exit /b 0
+
+:aftertrypy
 
 REM A bare `python` on a machine without Python opens the Microsoft Store stub,
 REM which prints nothing and exits 0 instead of failing. So require that it
@@ -63,8 +114,28 @@ REM 3.0-3.9 satisfy the pattern above but are too old for the dependencies;
 REM rejecting them here gives a clear message instead of a pip resolution error.
 echo !PYVER! | findstr /r "^3\.[0-9]\." >nul
 if not errorlevel 1 goto :tooold
+python -c "import sysconfig,sys; sys.exit(1 if sysconfig.get_config_var('Py_GIL_DISABLED') else 0)" >nul 2>&1
+if errorlevel 1 goto :freethreaded
 set "PYCMD=python"
 goto :found
+
+:freethreaded
+echo   [X] This is the "free-threaded" build of Python !PYVER!.
+echo.
+echo   That version is experimental, and the encryption libraries amvault
+echo   needs cannot be built for it yet.
+echo.
+echo   Install the standard version instead:
+echo.
+echo     1. Go to      https://www.python.org/downloads/
+echo     2. Download the normal installer - NOT the one labelled
+echo        "free-threaded" or ending in "t"
+echo     3. During setup, tick "Add python.exe to PATH"
+echo     4. Then double-click amvault-reset.bat, and amvault.bat after it
+echo.
+start "" "https://www.python.org/downloads/"
+pause
+exit /b 1
 
 :tooold
 echo   [X] Python !PYVER! is too old.
@@ -133,14 +204,35 @@ echo   This is the slow step - about 250 MB. Please wait.
 echo.
 
 "%PYEXE%" -m pip install --upgrade pip --quiet --disable-pip-version-check 2>nul
-"%PYEXE%" -m pip install --disable-pip-version-check -r requirements.txt
+
+REM Print the interpreter first: when this step fails, the version and build
+REM are the two facts needed to tell why, and they are otherwise buried.
+"%PYEXE%" -c "import sys,sysconfig; print('   Using Python', sys.version.split()[0], '(free-threaded)' if sysconfig.get_config_var('Py_GIL_DISABLED') else '')"
+echo.
+
+REM --only-binary keeps pip from trying to compile anything: every dependency
+REM publishes Windows wheels, so a source build here means the interpreter is
+REM one they do not support, and failing fast says that far more clearly than
+REM a compiler error would.
+"%PYEXE%" -m pip install --disable-pip-version-check --only-binary=:all: -r requirements.txt
 if errorlevel 1 (
     echo.
     echo   [X] Download failed.
     echo.
-    echo   Check that this computer is connected to the internet, then
-    echo   double-click this file again. It carries on from where it stopped -
-    echo   parts already downloaded are not fetched twice.
+    echo   The most common causes:
+    echo.
+    echo     * No internet connection. Reconnect and double-click this file
+    echo       again - it carries on from where it stopped.
+    echo.
+    echo     * A Python version the encryption libraries cannot build for.
+    echo       Look above for a line mentioning "cffi" or "free-threaded".
+    echo       If you see one, install the STANDARD Python from python.org
+    echo       (not the "free-threaded" variant), run amvault-reset.bat,
+    echo       then this file again.
+    echo.
+    echo     * No compiler, if a library had to be built from source. The
+    echo       standard Python versions have ready-made packages, so this
+    echo       usually means the Python in use is very new or unusual.
     echo.
     pause
     exit /b 1

@@ -17,6 +17,10 @@ you. Install Python, and on the FIRST screen of the installer tick the
 box that says "Add python.exe to PATH". Then double-click amvault.bat
 again.
 
+IMPORTANT: download the normal Python. Do NOT pick the version labelled
+"free-threaded" or ending in "t" - it is experimental, and the encryption
+libraries amvault needs cannot be installed for it.
+
 
 YOUR PASSWORDS
 --------------
