@@ -21,7 +21,17 @@ echo   ==========================================
 echo.
 
 REM ---------- already installed? ----------
-if exist "%PYEXE%" goto :launch
+REM The interpreter existing is not proof the setup finished: `venv` creates it
+REM before pip installs anything, so a download interrupted half way leaves a
+REM working python.exe with no dependencies behind it. Test a real import.
+if not exist "%PYEXE%" goto :setup
+"%PYEXE%" -c "import PySide6, pykeepass" >nul 2>&1
+if not errorlevel 1 goto :launch
+echo   The last setup did not finish. Resuming where it stopped...
+echo.
+goto :install
+
+:setup
 
 REM ---------- find a usable Python ----------
 echo   First run - setting things up. This takes a few minutes.
@@ -97,6 +107,7 @@ echo.
 
 REM ---------- create the environment ----------
 echo   Creating a private Python environment...
+if exist "%PYEXE%" goto :venvready
 %PYCMD% -m venv "%VENV%" 2>nul
 if not exist "%PYEXE%" (
     echo.
@@ -111,9 +122,11 @@ if not exist "%PYEXE%" (
     pause
     exit /b 1
 )
-echo   [OK] Environment created
+:venvready
+echo   [OK] Environment ready
 echo.
 
+:install
 REM ---------- install dependencies ----------
 echo   Downloading the parts amvault needs.
 echo   This is the slow step - about 250 MB. Please wait.
@@ -126,10 +139,9 @@ if errorlevel 1 (
     echo   [X] Download failed.
     echo.
     echo   Check that this computer is connected to the internet, then
-    echo   double-click this file again. Nothing was lost - it will carry
-    echo   on from where it stopped.
+    echo   double-click this file again. It carries on from where it stopped -
+    echo   parts already downloaded are not fetched twice.
     echo.
-    REM Leave the half-built environment: pip resumes into it on the next run.
     pause
     exit /b 1
 )
@@ -153,13 +165,40 @@ echo.
 timeout /t 2 >nul
 
 :launch
+REM Check the app can import before handing off to pythonw.exe: that binary has
+REM no console, so a failure after this point dies invisibly and looks to the
+REM user like clicking the file did nothing at all.
+"%PYEXE%" -c "import PySide6, pykeepass, argon2, cryptography" >nul 2>&1
+if not errorlevel 1 goto :run
+
+echo   [X] Some parts are missing or damaged. Repairing...
+echo.
+"%PYEXE%" -m pip install --disable-pip-version-check -r requirements.txt
+if errorlevel 1 goto :repairfailed
+echo.
+echo   [OK] Repaired.
+echo.
+goto :run
+
+:repairfailed
+echo.
+echo   [X] Could not repair the installation.
+echo.
+echo   Delete the folder called  %VENV%  in this directory, then
+echo   double-click this file again to start over from scratch.
+echo.
+pause
+exit /b 1
+
+:run
 REM pythonw.exe runs without a console window, which is what you want for a
 REM desktop app. Fall back to python.exe if it is missing.
 set "PYW=%VENV%\Scripts\pythonw.exe"
-if exist "%PYW%" (
-    start "" "%PYW%" "amvault-gui.py"
-    exit /b 0
-)
+if not exist "%PYW%" goto :runconsole
+start "" "%PYW%" "amvault-gui.py"
+exit /b 0
+
+:runconsole
 
 "%PYEXE%" "amvault-gui.py"
 if errorlevel 1 (

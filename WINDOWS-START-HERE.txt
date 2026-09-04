@@ -56,5 +56,10 @@ Passwords, 2FA codes and everything else work fine without it.
 
 IF SOMETHING GOES WRONG
 -----------------------
-Delete the folder named  .venv-win  and double-click amvault.bat again.
-That rebuilds the installation. Your vault in data\ is not touched.
+Double-click  amvault-reset.bat  and answer Y. That clears the
+installation so the next launch rebuilds it. Your vault in data\ is
+not touched.
+
+If the download was interrupted, you do not need to reset at all -
+just double-click amvault.bat again and it carries on from where it
+stopped.
