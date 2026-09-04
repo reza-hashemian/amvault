@@ -1,0 +1,15 @@
+# Batch files must keep CRLF endings: cmd.exe mis-parses goto labels and
+# multi-line blocks in a file with bare LF endings, so normalising them would
+# break the Windows launcher for everyone who clones this.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# The Windows instructions are opened in Notepad, which renders LF-only files
+# as one unbroken line on older builds.
+WINDOWS-START-HERE.txt text eol=crlf
+
+# Everything else uses LF.
+*.py text eol=lf
+*.sh text eol=lf
+*.md text eol=lf
+*.html text eol=lf

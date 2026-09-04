@@ -1,0 +1,60 @@
+amvault — Windows
+=================
+
+TO START:  double-click  amvault.bat
+
+
+FIRST TIME
+----------
+The first run downloads what the app needs (about 250 MB) and takes a
+few minutes. A black window shows the progress — leave it open until it
+finishes on its own.
+
+Every run after that opens straight away.
+
+If it says Python is not installed, it will open the download page for
+you. Install Python, and on the FIRST screen of the installer tick the
+box that says "Add python.exe to PATH". Then double-click amvault.bat
+again.
+
+
+YOUR PASSWORDS
+--------------
+Everything is kept in one encrypted file:
+
+    data\vault.kdbx
+
+That file IS your vault — copy it and you have copied everything. It is
+encrypted, so it is safe on a USB stick or in cloud storage. Without your
+master password nobody can read it, and there is no way to recover that
+password if you forget it.
+
+Keep a backup somewhere separate from your computer.
+
+
+ON YOUR PHONE
+-------------
+Copy data\vault.kdbx to your phone and open it with:
+
+    Android — KeePassDX
+    iPhone  — Strongbox
+
+Same password. You will see the same entries, folders and 2FA codes.
+
+Edit on one device at a time and let it finish syncing before you edit on
+the other, or you will be asked which version to keep.
+
+
+CONNECTING TO SERVERS
+---------------------
+Works only if OpenSSH is installed. To add it:
+
+    Settings > Apps > Optional Features > Add a feature > OpenSSH Client
+
+Passwords, 2FA codes and everything else work fine without it.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+Delete the folder named  .venv-win  and double-click amvault.bat again.
+That rebuilds the installation. Your vault in data\ is not touched.

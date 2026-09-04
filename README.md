@@ -75,6 +75,13 @@ and backups together. `data/` is gitignored, so secrets never reach a repo.
 
 ## Install
 
+**Windows:** double-click `amvault.bat`. It installs everything it needs on the
+first run and starts the app on every run after that. If Python is missing it
+says so and opens the download page. See `WINDOWS-START-HERE.txt` for a
+plain-language version.
+
+**Linux / macOS:**
+
 ```bash
 python3 -m venv .venv
 ./.venv/bin/pip install "cryptography>=42" argon2-cffi PySide6 pyperclip pykeepass
