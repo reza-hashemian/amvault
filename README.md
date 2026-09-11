@@ -132,6 +132,9 @@ amvault export "Prod" id_ed25519 /tmp/key   # writes mode 0600
 amvault gen -l 32 -n 5           # generate passwords (no unlock needed)
 amvault backup ~/backups
 amvault passwd                   # change master password
+
+amvault dump -o out.json --i-understand-this-is-plaintext   # everything, plaintext
+amvault load out.json            # import into a vault (see: Starting over)
 ```
 
 Passwords are read from a TTY prompt, never argv. `AMVAULT_PASSWORD` is honoured
@@ -204,6 +207,49 @@ There is **no automatic merge**. Two vaults edited independently cannot be
 reconciled without guessing which side is right, so the choice stays with you.
 The practical habit: let the sync settle before editing on the other device.
 
+## Starting over with new credentials
+
+If the key file or master password may have leaked, `amvault passwd` (GUI:
+**Vault ▸ Change master password**) re-encrypts the vault with a fresh salt and
+key. That is the right answer most of the time and never writes secrets to disk.
+
+It does keep the same file, though — same identity, same history, and the same
+copies already synced to other devices, all of which still open with the old
+credentials. To move to a genuinely new file, export the data and import it into
+a fresh vault:
+
+```bash
+amvault --vault old.kdbx --key-file old.key \
+        dump -o transfer.json --i-understand-this-is-plaintext
+
+amvault --vault new.kdbx init --generate-key-file new.key
+
+amvault --vault new.kdbx --key-file new.key load transfer.json
+
+shred -u transfer.json    # or: rm -P / rm
+```
+
+In the GUI the same pair is **Vault ▸ Export all data to JSON…** and **Vault ▸
+Import data from JSON…**. Export asks for a typed confirmation, because it is
+the one action in the app that undoes the encryption everything else provides.
+
+**Attachments travel inside the JSON**, base64-encoded — SSH private keys,
+certificates, everything. One exported file is self-contained; there are no
+companion files to move separately.
+
+**That file is plaintext.** Every password, token and key in it is readable by
+anyone who opens it. It is written mode 0600 so other users on the machine
+cannot read it, but that is the only thing protecting it: write it somewhere
+only you can reach, and delete it as soon as the new vault works.
+
+Imported entries always arrive as **new** entries, never merged onto existing
+ones. Importing into a vault that already holds the same data gives two copies,
+so the CLI refuses unless you pass `--merge`. For the rotation case the target
+is an empty vault, where adding is exactly right.
+
+Once the new vault is verified, delete the old vault file, its backups and the
+old key file — they still open with the leaked credentials.
+
 ## Layout
 
 ```
@@ -212,7 +258,7 @@ gui/         unlock.py  main_window.py  editor.py  password_dialog.py  theme.py
 legacy/      readers for the old .amv format, used only by the migration tool
 amvault.py       CLI
 amvault-gui.py   GUI entry point
-tests/           55 tests
+tests/           106 tests
 vault-admin.sh   status / backup / restore / reset
 ```
 
@@ -222,8 +268,8 @@ vault-admin.sh   status / backup / restore / reset
 
 Tests cover RFC 6238 TOTP vectors, the full KeePass field mapping, sync-conflict
 detection and resolution, entries written by other clients, attachment
-round-trips, and that loading an SSH key leaves the host's own agent keys
-untouched.
+round-trips, export/import round-trips into a re-keyed vault, and that loading
+an SSH key leaves the host's own agent keys untouched.
 
 ## Housekeeping
 

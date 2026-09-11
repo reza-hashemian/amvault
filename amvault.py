@@ -31,6 +31,7 @@ from vault.manager import (
     SyncConflict, VaultManager, estimate_strength, generate_passphrase, generate_password,
 )
 from vault.models import Category, Entry, TEMPLATE_FIELDS
+from vault import portable
 from vault import totp as totp_mod
 
 def _default_vault_path() -> str:
@@ -598,23 +599,79 @@ def cmd_stats(args) -> int:
 
 
 def cmd_dump(args) -> int:
-    """Export everything as plaintext JSON. Deliberately hard to do by accident."""
+    """Export everything as plaintext JSON, attachments included.
+
+    The intended use is key rotation: dump the old vault, `init` a new one with
+    a fresh password and key file, then `load` the dump into it.  Attachments
+    ride along base64-encoded inside the same file, so nothing has to be
+    exported and re-attached by hand.
+
+    Deliberately hard to do by accident -- everything the vault protects is
+    readable in the result.
+    """
     manager = open_vault(args)
     if not args.i_understand_this_is_plaintext:
         err("Refusing to write plaintext secrets without "
             "--i-understand-this-is-plaintext.")
         return 2
 
-    payload = {"entries": [e.to_dict() for e in manager.entries]}
+    entries = manager.entries
     if args.output:
-        fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(payload, fh, indent=2, ensure_ascii=False)
-        print(f"Wrote plaintext export to {args.output} (mode 0600).", file=sys.stderr)
-        print("Delete it as soon as you are done.", file=sys.stderr)
+        try:
+            portable.write_export(entries, args.output)
+        except portable.ExportError as exc:
+            err(str(exc))
+            return 2
+        counts = portable.summarise(entries)
+        print(f"Wrote {counts['entries']} entries and {counts['attachments']} "
+              f"attachments to {args.output} (mode 0600).", file=sys.stderr)
+        print("This file is PLAINTEXT. Delete it as soon as you have "
+              "imported it.", file=sys.stderr)
     else:
-        json.dump(payload, sys.stdout, indent=2, ensure_ascii=False)
+        json.dump(portable.build_payload(entries), sys.stdout,
+                  indent=2, ensure_ascii=False)
         print()
+    return 0
+
+
+def cmd_load(args) -> int:
+    """Import entries from a plaintext JSON export into this vault.
+
+    Entries are always *added*, never merged onto existing ones: imported
+    entries get fresh ids, so importing into a vault that already holds the
+    same data gives you two copies rather than silently overwriting one.  For
+    the rotation case the target is a brand-new vault, where that is exactly
+    right.
+    """
+    try:
+        entries = portable.read_export(args.file)
+    except portable.ImportError_ as exc:
+        err(str(exc))
+        return 2
+
+    counts = portable.summarise(entries)
+    manager = open_vault(args)
+    existing = len(manager.entries)
+
+    if existing and not args.merge:
+        err(f"This vault already has {existing} entries. Importing would add "
+            f"{counts['entries']} more alongside them, not replace them.")
+        err("Pass --merge if that is what you want, or import into a fresh "
+            "vault made with `amvault init`.")
+        return 2
+
+    for entry in entries:
+        manager.add(entry)
+
+    code = save_or_report(manager, force=args.force)
+    if code:
+        return code
+
+    print(f"Imported {counts['entries']} entries and {counts['attachments']} "
+          f"attachments ({counts['attachment_bytes'] / 1024:.0f} KiB) "
+          f"into {args.vault}.")
+    if existing:
+        print(f"The vault now holds {existing + counts['entries']} entries.")
     return 0
 
 
@@ -734,10 +791,17 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("stats", help="summarise the vault")
     p.set_defaults(func=cmd_stats)
 
-    p = sub.add_parser("dump", help="export all entries as plaintext JSON")
+    p = sub.add_parser("dump", help="export all entries (and attachments) as "
+                                    "plaintext JSON")
     p.add_argument("-o", "--output", help="write to a file instead of stdout")
     p.add_argument("--i-understand-this-is-plaintext", action="store_true")
     p.set_defaults(func=cmd_dump)
+
+    p = sub.add_parser("load", help="import entries from a plaintext JSON dump")
+    p.add_argument("file", help="the JSON file written by `amvault dump`")
+    p.add_argument("--merge", action="store_true",
+                   help="allow importing into a vault that already has entries")
+    p.set_defaults(func=cmd_load)
 
     return parser
 

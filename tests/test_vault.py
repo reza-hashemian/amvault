@@ -1,6 +1,7 @@
 """Tests for the vault core: kdbx round-trips, sync conflicts, and TOTP."""
 
 import base64
+import json
 import os
 import shutil
 import sys
@@ -19,6 +20,7 @@ from vault.manager import (
     generate_passphrase, generate_password,
 )
 from vault.models import Attachment, Category, Entry
+from vault import portable
 from vault.totp import TotpError, generate as totp_generate, parse_uri
 
 
@@ -510,6 +512,160 @@ class TestPasswordGeneration(unittest.TestCase):
         self.assertLess(estimate_strength("abc")["bits"],
                         estimate_strength(generate_password(32))["bits"])
         self.assertEqual(estimate_strength("")["label"], "empty")
+
+
+class TestPortableExport(VaultTestCase):
+    """Export/import, i.e. moving into a new vault after a key leak."""
+
+    KEYDATA = b"-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaA\n-----END-----\n"
+
+    def populated_vault(self, password="oldpw"):
+        m = self.mgr()
+        m.create(password)
+        m.add(Entry(
+            title="GitHub", category=Category.LOGIN,
+            fields={"username": "reza", "password": "hunter2",
+                    "url": "https://github.com"},
+            tags=["work"], notes="the main account",
+        ))
+        m.add(Entry(
+            title="Prod server", category=Category.SSH_KEY,
+            fields={"username": "root", "host": "10.0.0.5",
+                    "passphrase": "keypass"},
+        ))
+        m.save()
+
+        src = os.path.join(self.dir.name, "id_ed25519")
+        with open(src, "wb") as fh:
+            fh.write(self.KEYDATA)
+        ssh_entry = next(e for e in m.entries if e.title == "Prod server")
+        m.attach_file(ssh_entry.id, src)
+        m.save()
+        return m
+
+    def test_export_includes_attachment_bytes(self):
+        m = self.populated_vault()
+        out = os.path.join(self.dir.name, "export.json")
+        portable.write_export(m.entries, out)
+
+        with open(out, encoding="utf-8") as fh:
+            payload = json.load(fh)
+        self.assertEqual(payload["format"], portable.FORMAT)
+        self.assertEqual(payload["entry_count"], 2)
+
+        entry = next(e for e in payload["entries"] if e["title"] == "Prod server")
+        blob = entry["attachments"][0]
+        self.assertEqual(blob["name"], "id_ed25519")
+        self.assertEqual(base64.b64decode(blob["data"]), self.KEYDATA)
+
+    def test_export_file_is_owner_only(self):
+        if os.name != "posix":
+            self.skipTest("POSIX permissions only")
+        m = self.populated_vault()
+        out = os.path.join(self.dir.name, "export.json")
+        portable.write_export(m.entries, out)
+        self.assertEqual(os.stat(out).st_mode & 0o777, 0o600)
+
+    def test_rotation_roundtrip_into_new_vault(self):
+        """The whole point: old vault out, new vault in, nothing lost."""
+        old = self.populated_vault("oldpw")
+        out = os.path.join(self.dir.name, "export.json")
+        portable.write_export(old.entries, out)
+
+        new_path = os.path.join(self.dir.name, "new.kdbx")
+        keyfile = make_keyfile(os.path.join(self.dir.name, "new.key"))
+        new = VaultManager(new_path)
+        new.create("a-completely-different-password", keyfile)
+        for entry in portable.read_export(out):
+            new.add(entry)
+        new.save()
+
+        reopened = VaultManager(new_path)
+        reopened.unlock("a-completely-different-password", keyfile)
+        titles = sorted(e.title for e in reopened.entries)
+        self.assertEqual(titles, ["GitHub", "Prod server"])
+
+        github = next(e for e in reopened.entries if e.title == "GitHub")
+        self.assertEqual(github.fields["password"], "hunter2")
+        self.assertEqual(github.fields["username"], "reza")
+        self.assertEqual(github.tags, ["work"])
+        self.assertEqual(github.notes, "the main account")
+
+        ssh = next(e for e in reopened.entries if e.title == "Prod server")
+        self.assertEqual(ssh.category, Category.SSH_KEY)
+        self.assertEqual(ssh.fields["passphrase"], "keypass")
+        self.assertEqual(ssh.attachments[0].data, self.KEYDATA)
+
+    def test_old_credentials_do_not_open_the_new_vault(self):
+        """Rotation is pointless if the leaked password still works."""
+        old = self.populated_vault("oldpw")
+        out = os.path.join(self.dir.name, "export.json")
+        portable.write_export(old.entries, out)
+
+        new_path = os.path.join(self.dir.name, "new.kdbx")
+        new = VaultManager(new_path)
+        new.create("newpw")
+        for entry in portable.read_export(out):
+            new.add(entry)
+        new.save()
+
+        with self.assertRaises(KdbxCredentialsError):
+            VaultManager(new_path).unlock("oldpw")
+
+    def test_import_assigns_fresh_ids(self):
+        """Reused KeePass uuids would overwrite entries instead of adding."""
+        m = self.populated_vault()
+        out = os.path.join(self.dir.name, "export.json")
+        portable.write_export(m.entries, out)
+
+        original_ids = {e.id for e in m.entries}
+        imported_ids = {e.id for e in portable.read_export(out)}
+        self.assertEqual(len(imported_ids), 2)
+        self.assertFalse(original_ids & imported_ids)
+
+    def test_importing_twice_duplicates_rather_than_merges(self):
+        m = self.populated_vault()
+        out = os.path.join(self.dir.name, "export.json")
+        portable.write_export(m.entries, out)
+
+        target = VaultManager(os.path.join(self.dir.name, "target.kdbx"))
+        target.create("pw")
+        for _ in range(2):
+            for entry in portable.read_export(out):
+                target.add(entry)
+        target.save()
+        self.assertEqual(len(target.entries), 4)
+
+    def test_rejects_files_that_are_not_exports(self):
+        cases = {
+            "not json": "{{{",
+            "wrong format": '{"format": "something-else", "version": 1}',
+            "future version": '{"format": "amvault-export", "version": 99, "entries": []}',
+            "no entries list": '{"format": "amvault-export", "version": 1}',
+            "entry not an object": (
+                '{"format": "amvault-export", "version": 1, "entries": [42]}'
+            ),
+            "bad base64 attachment": json.dumps({
+                "format": "amvault-export", "version": 1,
+                "entries": [{"title": "X", "attachments": [
+                    {"name": "k", "data": "!!!not base64!!!"}]}],
+            }),
+        }
+        for label, text in cases.items():
+            with self.subTest(label):
+                with self.assertRaises(portable.ImportError_):
+                    portable.parse_export(text)
+
+    def test_missing_file_is_reported_cleanly(self):
+        with self.assertRaises(portable.ImportError_):
+            portable.read_export(os.path.join(self.dir.name, "nope.json"))
+
+    def test_summarise_counts_attachments(self):
+        m = self.populated_vault()
+        counts = portable.summarise(m.entries)
+        self.assertEqual(counts["entries"], 2)
+        self.assertEqual(counts["attachments"], 1)
+        self.assertEqual(counts["attachment_bytes"], len(self.KEYDATA))
 
 
 if __name__ == "__main__":

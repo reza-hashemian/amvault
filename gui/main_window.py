@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import os
+import time
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QColor, QCursor, QGuiApplication, QKeySequence
 from PySide6.QtWidgets import (
-    QApplication, QFileDialog, QHBoxLayout, QLabel, QLineEdit, QListWidget,
-    QListWidgetItem, QMainWindow, QMessageBox, QPushButton, QSplitter,
-    QVBoxLayout, QWidget,
+    QApplication, QFileDialog, QHBoxLayout, QInputDialog, QLabel, QLineEdit,
+    QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPushButton,
+    QSplitter, QVBoxLayout, QWidget,
 )
 
+from vault import portable
 from vault.kdbx import KdbxError
 from vault.manager import SyncConflict, VaultManager
 from vault.models import Category, Entry
@@ -179,6 +181,9 @@ class MainWindow(QMainWindow):
         vault_menu.addSeparator()
         self._action(vault_menu, "&Backup vault…", "Ctrl+B", self.backup_vault)
         self._action(vault_menu, "&Change master password…", None, self.change_password)
+        vault_menu.addSeparator()
+        self._action(vault_menu, "&Export all data to JSON…", None, self.export_json)
+        self._action(vault_menu, "&Import data from JSON…", None, self.import_json)
         vault_menu.addSeparator()
         self._action(vault_menu, "&Lock", "Ctrl+L", self.lock)
         self._action(vault_menu, "&Quit", "Ctrl+Q", self.close)
@@ -541,6 +546,150 @@ class MainWindow(QMainWindow):
             "The vault was re-encrypted with a new salt and key.\n"
             "Any old backups still open with the old password — delete them "
             "if the old password may be compromised.",
+        )
+
+    # --- plaintext export / import --------------------------------------
+    #
+    # These exist for one job: moving into a brand-new vault when the old
+    # password or key file may have leaked.  `Change master password` re-keys
+    # the file in place and is the better answer most of the time; this pair is
+    # for when you want a genuinely new file, which means the data has to leave
+    # encryption for as long as it takes to carry it across.
+
+    CONFIRM_WORD = "EXPORT"
+
+    def export_json(self) -> None:
+        entries = self.manager.entries
+        if not entries:
+            QMessageBox.information(self, "Nothing to export",
+                                    "This vault has no entries yet.")
+            return
+
+        counts = portable.summarise(entries)
+        attachment_note = (
+            f"{counts['attachments']} attachments "
+            f"({counts['attachment_bytes'] / 1024:.0f} KiB), including any SSH "
+            f"private keys, are included in the file."
+            if counts["attachments"] else
+            "This vault has no attachments."
+        )
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("Export is not encrypted")
+        box.setText(
+            f"You are about to write {counts['entries']} entries to a plain "
+            f"JSON file."
+        )
+        box.setInformativeText(
+            f"Every password, token and key will be readable by anyone who "
+            f"opens that file. {attachment_note}\n\n"
+            f"Write it somewhere only you can reach, import it into the new "
+            f"vault, then delete it."
+        )
+        proceed = box.addButton("I understand — choose a file", QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Cancel)
+        box.exec()
+        if box.clickedButton() is not proceed:
+            return
+
+        # Typed confirmation as well as the button: this is the one action in
+        # the app that undoes the encryption everything else provides.
+        typed, ok = QInputDialog.getText(
+            self, "Confirm plaintext export",
+            f"Type {self.CONFIRM_WORD} to confirm:",
+        )
+        if not ok or typed.strip() != self.CONFIRM_WORD:
+            self.show_status("Export cancelled.")
+            return
+
+        default_name = os.path.join(
+            os.path.dirname(os.path.abspath(self.manager.path)),
+            f"amvault-export-{time.strftime('%Y%m%d-%H%M%S')}.json",
+        )
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save plaintext export", default_name, "JSON files (*.json)"
+        )
+        if not path:
+            return
+
+        try:
+            portable.write_export(entries, path)
+        except (portable.ExportError, OSError) as exc:
+            QMessageBox.critical(self, "Export failed", str(exc))
+            return
+
+        QMessageBox.information(
+            self, "Export written",
+            f"{path}\n\n"
+            f"{counts['entries']} entries and {counts['attachments']} "
+            f"attachments, readable only by your user account.\n\n"
+            f"This file is NOT encrypted. Delete it once the new vault is "
+            f"working.",
+        )
+        self.show_status("Plaintext export written — delete it when you are done.")
+
+    def import_json(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Choose an amvault JSON export",
+            os.path.dirname(os.path.abspath(self.manager.path)),
+            "JSON files (*.json);;All files (*)",
+        )
+        if not path:
+            return
+
+        try:
+            entries = portable.read_export(path)
+        except portable.ImportError_ as exc:
+            QMessageBox.critical(self, "Could not read that file", str(exc))
+            return
+
+        if not entries:
+            QMessageBox.information(self, "Nothing to import",
+                                    "That export contains no entries.")
+            return
+
+        counts = portable.summarise(entries)
+        existing = len(self.manager.entries)
+
+        # Imported entries always arrive as new ones -- say so plainly, because
+        # importing into a vault that already holds the same data duplicates it
+        # rather than merging.
+        detail = (
+            f"{counts['entries']} entries and {counts['attachments']} "
+            f"attachments will be added."
+        )
+        if existing:
+            detail += (
+                f"\n\nThis vault already holds {existing} entries. They are "
+                f"kept; the imported ones are added alongside, so anything "
+                f"already here will appear twice."
+            )
+
+        reply = QMessageBox.question(
+            self, "Import entries?", detail,
+            QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        for entry in entries:
+            self.manager.add(entry)
+
+        self._populate_categories()
+        self.refresh_list()
+        if not self.save_vault():
+            # Left in memory but not on disk; the save path has already
+            # explained why, and the entries are still here to retry with.
+            self.show_status("Imported, but the vault could not be saved.")
+            return
+
+        QMessageBox.information(
+            self, "Import complete",
+            f"Added {counts['entries']} entries and {counts['attachments']} "
+            f"attachments.\n\n"
+            f"Check that they look right, then delete the JSON file — it is "
+            f"not encrypted.",
         )
 
     def show_status(self, message: str) -> None:
