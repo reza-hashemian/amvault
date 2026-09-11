@@ -421,11 +421,19 @@ class EntryEditor(QScrollArea):
             QMessageBox.warning(self, "اتصال ممکن نشد", str(exc))
             return
 
-        if result["key_loaded"]:
+        if result["via_agent"]:
             minutes = (result["lifetime"] or 0) // 60
             self.status.emit(
                 f"در حال اتصال به {result['display']} — کلید تا {minutes} دقیقه "
                 f"در ssh-agent می‌ماند."
+            )
+        elif result["key_loaded"]:
+            # The agent was unreachable, so the key is a temporary file on
+            # disk instead; connect() deletes it when the terminal exits.
+            # Say so anyway -- the weaker guarantee is worth a mention.
+            self.status.emit(
+                f"در حال اتصال به {result['display']} — ssh-agent در دسترس نبود، "
+                f"کلید موقتاً روی دیسک نوشته شد."
             )
         else:
             self.status.emit(f"در حال اتصال به {result['display']}")

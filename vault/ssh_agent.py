@@ -40,9 +40,23 @@ def agent_available() -> bool:
 
     Exit code 2 means "cannot connect"; 0 means keys are loaded and 1 means the
     agent is running but empty -- both of which count as available.
+
+    On Windows the agent is a service that ships disabled, so a failure here is
+    usually "not started yet" rather than "not installed". start_windows_agent()
+    is tried once before giving up, which turns the common case into a working
+    connection instead of an error the user has to go and fix by hand.
     """
     if not shutil.which("ssh-add"):
         return False
+    if _agent_responds():
+        return True
+    if IS_WINDOWS and start_windows_agent():
+        return _agent_responds()
+    return False
+
+
+def _agent_responds() -> bool:
+    """Ask the agent directly, without trying to start anything."""
     try:
         result = subprocess.run(
             ["ssh-add", "-l"], capture_output=True, timeout=5
@@ -50,6 +64,78 @@ def agent_available() -> bool:
     except (OSError, subprocess.SubprocessError):
         return False
     return result.returncode != 2
+
+
+def windows_agent_state() -> str | None:
+    """The ssh-agent service's state: 'running', 'stopped', or None if absent.
+
+    `sc query` prints a line like "STATE : 4  RUNNING". Parsing the word rather
+    than the number keeps this readable; a missing service exits non-zero, which
+    is reported as None so the caller can say "not installed" specifically.
+    """
+    if not IS_WINDOWS:
+        return None
+    try:
+        result = subprocess.run(
+            ["sc", "query", "ssh-agent"], capture_output=True, text=True, timeout=10
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    text = (result.stdout or "").upper()
+    if "RUNNING" in text:
+        return "running"
+    if "STOPPED" in text or "STOP_PENDING" in text:
+        return "stopped"
+    return "unknown"
+
+
+def start_windows_agent() -> bool:
+    """Try to start the ssh-agent service, returning whether it now runs.
+
+    The service ships with start type Disabled, and `sc start` on a disabled
+    service fails with "service cannot be started" no matter the privileges --
+    so the start type is set to automatic first. Both calls need Administrator;
+    without it they fail harmlessly and the caller falls back to a key file.
+    """
+    if not IS_WINDOWS:
+        return False
+    if windows_agent_state() is None:
+        return False
+    try:
+        subprocess.run(
+            ["sc", "config", "ssh-agent", "start=", "auto"],
+            capture_output=True, timeout=15, check=False,
+        )
+        subprocess.run(
+            ["sc", "start", "ssh-agent"],
+            capture_output=True, timeout=20, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return windows_agent_state() == "running"
+
+
+def agent_hint() -> str:
+    """Platform-correct instructions for getting an agent running.
+
+    `eval $(ssh-agent)` is meaningless in cmd.exe and PowerShell, so Windows
+    gets the service commands it actually needs.
+    """
+    if not IS_WINDOWS:
+        return "No ssh-agent is running. Start one with:  eval $(ssh-agent)"
+    if windows_agent_state() is None:
+        return (
+            "OpenSSH is not installed. Add it from "
+            "Settings > Apps > Optional Features > OpenSSH Client."
+        )
+    return (
+        "The OpenSSH Authentication Agent service is not running. Start it "
+        "from an Administrator PowerShell with:\n"
+        "  Set-Service ssh-agent -StartupType Automatic\n"
+        "  Start-Service ssh-agent"
+    )
 
 
 def _ram_backed_dir() -> str:
@@ -154,9 +240,7 @@ def add_key(
     if not shutil.which("ssh-add"):
         raise SshAgentError("ssh-add is not installed.")
     if not agent_available():
-        raise SshAgentError(
-            "No ssh-agent is running. Start one with:  eval $(ssh-agent)"
-        )
+        raise SshAgentError(agent_hint())
 
     directory = _ram_backed_dir()
     ram_backed = is_ram_backed(directory)
@@ -239,10 +323,12 @@ def _run_with_askpass(cmd: list[str], passphrase: str):
     supplied a passphrase non-interactively there.
     """
     if IS_WINDOWS:
+        # Not fatal: ssh_connect falls back to a key file, and ssh then asks
+        # for the passphrase in the terminal it opens -- which is a perfectly
+        # normal way to use an encrypted key, just not an automatic one.
         raise SshAgentError(
-            "This key is encrypted, and Windows OpenSSH cannot accept a "
-            "passphrase automatically. Run `ssh-add` yourself once, or store "
-            "an unencrypted copy of the key in the vault."
+            "This key is encrypted, and Windows OpenSSH cannot be given a "
+            "passphrase automatically. ssh will ask for it in the terminal."
         )
     directory = _ram_backed_dir()
     helper = os.path.join(directory, "askpass")
