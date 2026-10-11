@@ -21,9 +21,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from gui.main_window import MainWindow
+from gui.nettool import NetToolLauncher, NetToolNotFound
 from gui.unlock import UnlockWindow
 
 
@@ -53,6 +54,12 @@ class Application:
         self.vault_path = vault_path
         self.main_window: MainWindow | None = None
         self.unlock_window: UnlockWindow | None = None
+        # Outlives the main window, so the network tool stays connected across
+        # a lock and resumes when the vault is unlocked again.
+        self.nettool = NetToolLauncher(
+            lambda: self.main_window.manager if self.main_window is not None else None,
+            on_change=self._on_nettool_change,
+        )
 
     def start(self) -> None:
         self.show_unlock()
@@ -74,6 +81,8 @@ class Application:
         self.main_window = MainWindow(manager)
         self.main_window.locked.connect(self.on_locked)
         self.main_window.closed.connect(self.quit)
+        self.main_window.nettool_requested.connect(self.open_nettool)
+        self.nettool.notify("unlocked")
         self.main_window.show()
         self.main_window.raise_()
         self.main_window.activateWindow()
@@ -85,9 +94,24 @@ class Application:
     def on_locked(self) -> None:
         """Locking returns to the unlock window rather than quitting."""
         self.main_window = None
+        self.nettool.notify("locked")
         self.show_unlock()
 
+    def _on_nettool_change(self) -> None:
+        if self.main_window is not None:
+            self.main_window.entries_changed("Device added from the network tool.")
+
+    def open_nettool(self) -> None:
+        window = self.main_window
+        if window is None:
+            return
+        try:
+            window.show_status(self.nettool.launch())
+        except (NetToolNotFound, OSError) as exc:
+            QMessageBox.warning(window, "Network tool", str(exc))
+
     def quit(self) -> None:
+        self.nettool.shutdown()
         app = QApplication.instance()
         if app is not None:
             app.quit()

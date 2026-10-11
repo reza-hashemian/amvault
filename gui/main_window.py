@@ -27,6 +27,7 @@ AUTOLOCK_TICK_MS = 1000
 class MainWindow(QMainWindow):
     locked = Signal()   # vault locked; the app should return to the unlock screen
     closed = Signal()   # window dismissed by the user; the app should quit
+    nettool_requested = Signal()   # open the network tool for this vault
 
     def __init__(self, manager: VaultManager, parent=None):
         super().__init__(parent)
@@ -90,6 +91,14 @@ class MainWindow(QMainWindow):
         self.category_list = QListWidget()
         self.category_list.currentItemChanged.connect(self._on_category_selected)
         sidebar_layout.addWidget(self.category_list, 1)
+
+        nettool_button = QPushButton("🌐  Network tool")
+        nettool_button.setToolTip(
+            "Open the network tool. It uses this unlocked vault, so it does "
+            "not ask for the master password again.   (Ctrl+T)"
+        )
+        nettool_button.clicked.connect(self.nettool_requested.emit)
+        sidebar_layout.addWidget(nettool_button)
 
         lock_button = QPushButton("🔒  Lock now")
         lock_button.clicked.connect(self.lock)
@@ -194,6 +203,10 @@ class MainWindow(QMainWindow):
                      lambda: self._copy_field("username"))
         self._action(edit_menu, "Copy &password", "Ctrl+Shift+C",
                      lambda: self._copy_field("password"))
+
+        tools_menu = menubar.addMenu("&Tools")
+        self._action(tools_menu, "Open &network tool", "Ctrl+T",
+                     self.nettool_requested.emit)
 
         help_menu = menubar.addMenu("&Help")
         self._action(help_menu, "&About", None, self.show_about)
@@ -451,6 +464,13 @@ class MainWindow(QMainWindow):
         self._populate_categories()
         self.refresh_list()
         self.editor.show_placeholder()
+
+    def entries_changed(self, message: str = "") -> None:
+        """Entries were added outside this window; save and show them."""
+        self._populate_categories()
+        self.refresh_list()
+        if self.save_vault() and message:
+            self.show_status(message)
 
     def save_vault(self) -> bool:
         """Write the vault, resolving a sync conflict with the user if needed.

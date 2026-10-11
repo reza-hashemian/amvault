@@ -416,6 +416,7 @@ class EntryEditor(QScrollArea):
                 self.entry,
                 key_bytes=key_bytes,
                 passphrase=self.entry.fields.get("passphrase") or None,
+                password=self.entry.fields.get("password") or None,
             )
         except SshConnectError as exc:
             QMessageBox.warning(self, "اتصال ممکن نشد", str(exc))

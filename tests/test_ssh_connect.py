@@ -8,6 +8,7 @@ that each of those still produces a correct command.
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -136,3 +137,26 @@ class TestDescribeTarget(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+class TestDefaultTerminal(unittest.TestCase):
+    """x-terminal-emulator is a symlink; what it points at decides the flag."""
+
+    def resolve(self, target):
+        from vault import ssh_connect
+        with mock.patch("os.path.realpath", return_value=target):
+            return ssh_connect._resolve_alternative("/usr/bin/x-terminal-emulator")
+
+    def test_a_terminal_itself_gets_its_own_flag(self):
+        self.assertEqual(self.resolve("/usr/bin/kitty"), ("/usr/bin/x-terminal-emulator", []))
+        self.assertEqual(self.resolve("/usr/bin/konsole"), ("/usr/bin/x-terminal-emulator", ["-e"]))
+
+    def test_a_debian_wrapper_is_spoken_to_as_xterm(self):
+        # The wrapper only translates -e; given gnome-terminal's own "--" it
+        # opens an empty window and the ssh command is lost.
+        self.assertEqual(self.resolve("/usr/bin/gnome-terminal.wrapper"),
+                         ("/usr/bin/x-terminal-emulator", ["-e"]))
+        self.assertEqual(self.resolve("/usr/bin/xfce4-terminal.wrapper"),
+                         ("/usr/bin/x-terminal-emulator", ["-e"]))
+
+    def test_an_unknown_target_is_left_to_the_table(self):
+        self.assertIsNone(self.resolve("/opt/strange/term"))

@@ -145,10 +145,16 @@ def _resolve_alternative(path: str) -> tuple[str, list[str]] | None:
     except OSError:
         return None
     name = os.path.basename(target)
-    # Debian suffixes some binaries (gnome-terminal.wrapper, xterm.bin).
     for candidate, prefix in _TERMINALS:
-        if name == candidate or name.startswith(candidate + "."):
+        if name == candidate:
             return path, prefix
+        if name.startswith(candidate + "."):
+            # Debian's wrappers (gnome-terminal.wrapper, xfce4-terminal.wrapper)
+            # exist to make the terminal answer to xterm's options, so what
+            # they understand is `-e` -- not the terminal's own flag. Handed
+            # gnome-terminal's `--`, the wrapper drops it and the command with
+            # it, and the window opens on a bare shell with no ssh in it.
+            return path, ["-e"]
     return None
 
 
@@ -190,7 +196,7 @@ def login_shell() -> str | None:
     return shell if shell and os.access(shell, os.X_OK) else None
 
 
-def wrap_in_shell(ssh_command: list[str]) -> list[str]:
+def wrap_in_shell(ssh_command: list[str], env: dict | None = None) -> list[str]:
     """Run ssh through the user's shell, holding the window open on failure.
 
     A terminal launched with `-e ssh ...` makes ssh the terminal's own child,
@@ -212,8 +218,15 @@ def wrap_in_shell(ssh_command: list[str]) -> list[str]:
     """
     shell = login_shell()
     if not shell:
+        if env:
+            return ["env", *(f"{name}={value}" for name, value in env.items()), *ssh_command]
         return ssh_command
     quoted = " ".join(shlex.quote(part) for part in ssh_command)
+    if env:
+        # Set on ssh's own command line rather than in our environment: many
+        # terminals hand the command to an already-running server process,
+        # which starts it with its environment, not ours.
+        quoted = " ".join(f"{name}={shlex.quote(value)}" for name, value in env.items()) + " " + quoted
     # `status` is read-only in zsh (an alias for $?), so the variable holding
     # the exit code must not use that name -- assigning to it aborts the script
     # and closes the window, which is the very thing this is here to prevent.
@@ -230,7 +243,7 @@ def wrap_in_shell(ssh_command: list[str]) -> list[str]:
     return [shell, "-c", script]
 
 
-def _launch_linux(ssh_command: list[str], title: str) -> subprocess.Popen:
+def _launch_linux(ssh_command: list[str], title: str, env: dict | None = None) -> subprocess.Popen:
     terminal = find_terminal()
     if terminal is None:
         raise SshConnectError(
@@ -238,38 +251,47 @@ def _launch_linux(ssh_command: list[str], title: str) -> subprocess.Popen:
             "use the command shown below in your own terminal."
         )
     path, prefix = terminal
-    return subprocess.Popen([path, *prefix, *wrap_in_shell(ssh_command)])
+    return subprocess.Popen([path, *prefix, *wrap_in_shell(ssh_command, env)])
 
 
-def _launch_macos(ssh_command: list[str], title: str) -> subprocess.Popen:
+def _launch_macos(ssh_command: list[str], title: str, env: dict | None = None) -> subprocess.Popen:
     # Terminal.app runs the string through the user's own shell already, so
     # unlike Linux this needs no wrapping -- just correct quoting.
     quoted = " ".join(shlex.quote(part) for part in ssh_command)
+    if env:
+        quoted = " ".join(f"{name}={shlex.quote(value)}" for name, value in env.items()) + " " + quoted
     script = f'tell application "Terminal" to do script {quoted!r}\n' \
              'tell application "Terminal" to activate'
     return subprocess.Popen(["osascript", "-e", script])
 
 
-def _launch_windows(ssh_command: list[str], title: str) -> subprocess.Popen:
+def _launch_windows(ssh_command: list[str], title: str, env: dict | None = None) -> subprocess.Popen:
     quoted = subprocess.list2cmdline(ssh_command)
     # Windows Terminal if present, otherwise a plain console window. `start`
     # needs a title argument before the command, or it treats the first quoted
     # token as the title.
-    if shutil.which("wt.exe"):
+    #
+    # With variables to pass, always the plain console: Windows Terminal opens
+    # the tab from its already-running process, which would not carry them.
+    if shutil.which("wt.exe") and not env:
         return subprocess.Popen(["wt.exe", "-w", "0", "nt", *ssh_command])
     return subprocess.Popen(
         f'start "{title}" cmd /k {quoted}',
         shell=True,
+        env={**os.environ, **env} if env else None,
         creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
     )
 
 
-def launch_terminal(ssh_command: list[str], title: str = "amvault") -> subprocess.Popen:
+def launch_terminal(ssh_command: list[str], title: str = "amvault",
+                    env: dict | None = None) -> subprocess.Popen:
+    """Open a terminal running `ssh_command`, with `env` added to ssh's
+    environment."""
     if IS_WINDOWS:
-        return _launch_windows(ssh_command, title)
+        return _launch_windows(ssh_command, title, env)
     if sys.platform == "darwin":
-        return _launch_macos(ssh_command, title)
-    return _launch_linux(ssh_command, title)
+        return _launch_macos(ssh_command, title, env)
+    return _launch_linux(ssh_command, title, env)
 
 
 def ssh_available() -> bool:
@@ -413,6 +435,7 @@ def connect(
     key_bytes: bytes | None = None,
     passphrase: str | None = None,
     lifetime_seconds: int = 900,
+    password: str | None = None,
 ) -> dict:
     """Load the key (if any) and open a terminal session to the entry's host.
 
@@ -464,11 +487,25 @@ def connect(
                 )
 
     ssh_command = build_ssh_command(entry, identity_path)
+
+    # With a password in the entry, ssh collects it from us when the server
+    # asks, so the session signs in without it being typed. See ssh_askpass.
+    offer = None
+    if password:
+        from .ssh_askpass import PasswordOffer
+        try:
+            offer = PasswordOffer(password)
+        except OSError:
+            offer = None      # ssh will ask in the terminal instead
+
     try:
-        process = launch_terminal(ssh_command, title=entry.title)
+        process = launch_terminal(ssh_command, title=entry.title,
+                                  env=offer.environment() if offer else None)
     except Exception:
         # Nothing will ever consume the key now, so do not leave it behind.
         cleanup_key_file(key_file_path)
+        if offer:
+            offer.close()
         raise
 
     if key_file_path:
@@ -478,6 +515,7 @@ def connect(
         "command": ssh_command,
         "display": " ".join(ssh_command),
         "key_loaded": loaded is not None or key_file_path is not None,
+        "password_supplied": offer is not None,
         "via_agent": loaded is not None,
         "key_file": key_file_path,
         "agent_error": agent_error,

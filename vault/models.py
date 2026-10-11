@@ -55,7 +55,7 @@ TEMPLATE_FIELDS = {
     Category.NETWORK: [
         "device_type", "vendor", "model", "mgmt_ip", "mgmt_port",
         "username", "password", "enable_password", "snmp_community",
-        "wifi_ssid", "wifi_psk", "location", "firmware",
+        "wifi_ssid", "wifi_psk", "location", "firmware", "rustdesk_id",
     ],
     Category.NOTE: ["content"],
 }

@@ -110,6 +110,28 @@ Auto-locks after 10 minutes idle. Clipboard copies clear after 30 seconds, and
 only if the clipboard still holds what was copied. TOTP codes refresh live with
 a countdown.
 
+## Network tool
+
+**Network tool** in the sidebar (Ctrl+T) opens a separate program for working
+with the devices in the vault: listing them, opening SSH sessions, and looking
+up commands. It lives in its own project, `net-tool`, beside this one.
+
+It opens without asking for the master password again, and stores nothing.
+amvault acts as its credential broker, the way ssh-agent does for ssh:
+
+- Each launch gets a fresh random token, passed on the tool's stdin, and a
+  private local socket (a named pipe on Windows) that accepts one connection
+  and is then removed.
+- The tool only ever sees entries that describe a device — Network Device
+  entries, and SSH key entries with a host. Listing them carries no secrets;
+  a device's credentials are released one device at a time.
+- The tool can add a device its network scan found — a name and an address,
+  never a secret — and cannot change or delete anything that already exists.
+- Locking the vault cuts the tool off until it is unlocked again. Closing
+  amvault ends the session.
+
+Set `AMVAULT_NETTOOL` to the tool's executable if it is not in a sibling folder.
+
 ## CLI
 
 ```bash
