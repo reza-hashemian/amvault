@@ -1,0 +1,174 @@
+/* Colours follow macOS's own system palette, in both appearances, so the
+   window sits naturally beside native apps on a Mac and looks like one
+   elsewhere. Components use these tokens and never a raw colour. */
+:root {
+  color-scheme: dark;
+  --window: #1e1e1f;
+  --sidebar: #2a2a2c;
+  --raised: #2c2c2e;
+  --field: rgba(255, 255, 255, 0.07);
+  --hover: rgba(255, 255, 255, 0.06);
+  --stripe: rgba(255, 255, 255, 0.025);
+  --hairline: rgba(255, 255, 255, 0.09);
+  --edge: rgba(255, 255, 255, 0.16);
+  --text: rgba(255, 255, 255, 0.88);
+  --text-2: rgba(235, 235, 245, 0.58);
+  --text-3: rgba(235, 235, 245, 0.32);
+  --accent: #0a84ff;
+  --accent-soft: rgba(10, 132, 255, 0.18);
+  --on-accent: #ffffff;
+  --green: #30d158;
+  --orange: #ff9f0a;
+  --red: #ff453a;
+  --code: #19191a;
+  --placeholder: #ffb340;
+  /* Chart series, in fixed order. Checked for colour-blind separation and
+     contrast against the card surface in each appearance. */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+
+  --ui: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono Variable", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --fa: "Vazirmatn Variable", "Vazirmatn", "Inter Variable", system-ui, sans-serif;
+  --radius-window: 11px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --window: #ffffff;
+    --sidebar: #ececee;
+    --raised: #f5f5f7;
+    --field: rgba(0, 0, 0, 0.06);
+    --hover: rgba(0, 0, 0, 0.045);
+    --stripe: rgba(0, 0, 0, 0.022);
+    --hairline: rgba(0, 0, 0, 0.1);
+    --edge: rgba(0, 0, 0, 0.22);
+    --text: rgba(0, 0, 0, 0.86);
+    --text-2: rgba(60, 60, 67, 0.66);
+    --text-3: rgba(60, 60, 67, 0.36);
+    --accent: #007aff;
+    --accent-soft: rgba(0, 122, 255, 0.13);
+    --green: #28a745;
+    --orange: #c77700;
+    --red: #d70015;
+    --code: #f5f5f7;
+    --placeholder: #b25000;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+html,
+body {
+  /* The window is transparent so its corners can be round; .window paints. */
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  font: 13px/1.4 var(--ui);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: default;
+}
+
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-3);
+  border-radius: 5px;
+  border: 2.5px solid transparent;
+  background-clip: content-box;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-feature-settings: "zero", "calt" 0;
+}
+
+/* Text a person may want to select and copy. */
+.selectable {
+  user-select: text;
+  cursor: text;
+}
+
+.button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--field) 100%, var(--hover));
+}
+
+.button:active:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+.button:disabled {
+  opacity: 0.45;
+}
+
+.button.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: none;
+}
+
+.button.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "platform": "cisco_ios",
+  "label": "Cisco IOS",
+  "groups": [
+    {
+      "title": "حالت‌ها و ذخیره‌سازی",
+      "items": [
+        {
+          "id": "modes",
+          "title": "ورود به حالت‌های مختلف",
+          "summary": "IOS سه سطح دارد: حالت کاربر (فقط مشاهده‌ی محدود)، حالت privileged (همه‌ی دستورهای show) و حالت config (تغییر تنظیمات). برای هر تغییری باید تا حالت config پایین بروی.",
+          "prompt": "Switch>",
+          "syntax": ["enable", "configure terminal", "end"],
+          "params": [
+            { "name": "enable", "desc": "از حالت کاربر (<) به حالت privileged (#) می‌رود و enable password را می‌پرسد." },
+            { "name": "configure terminal", "desc": "وارد حالت global config می‌شود؛ پرامپت به (config)# تغییر می‌کند." },
+            { "name": "end", "desc": "از هر سطحی مستقیم به حالت privileged برمی‌گردد. exit فقط یک سطح بالا می‌رود." }
+          ],
+          "example": ["enable", "configure terminal"]
+        },
+        {
+          "id": "save",
+          "title": "ذخیره‌ی تنظیمات",
+          "summary": "هر تغییری فقط در running-config (حافظه‌ی RAM) اعمال می‌شود و با ری‌استارت از بین می‌رود. این دستور آن را در startup-config می‌نویسد تا بعد از ری‌استارت هم بماند.",
+          "prompt": "Switch#",
+          "syntax": ["copy running-config startup-config"],
+          "example": ["copy running-config startup-config"],
+          "note": "شکل کوتاه آن write memory یا wr است. بعد از هر تغییری که از درستی‌اش مطمئن شدی ذخیره کن."
+        },
+        {
+          "id": "show-run",
+          "title": "دیدن تنظیمات فعلی",
+          "summary": "کل پیکربندی فعال دستگاه را نشان می‌دهد. با | می‌شود خروجی را فیلتر کرد تا فقط بخش موردنظر دیده شود.",
+          "prompt": "Switch#",
+          "syntax": ["show running-config", "show running-config interface <interface>", "show running-config | section <keyword>"],
+          "params": [
+            { "name": "<interface>", "desc": "نام پورت، مثل GigabitEthernet0/1 یا کوتاه‌شده‌ی آن gi0/1." },
+            { "name": "<keyword>", "desc": "کلمه‌ای که بخش با آن شروع می‌شود، مثل vlan یا line." }
+          ],
+          "example": ["show running-config interface gi0/1"]
+        }
+      ]
+    },
+    {
+      "title": "VLAN و ترانک",
+      "items": [
+        {
+          "id": "vlan-create",
+          "title": "ساختن VLAN",
+          "summary": "یک VLAN جدید می‌سازد و برایش اسم می‌گذارد. تا وقتی VLAN ساخته نشده، پورت‌هایی که عضو آن می‌شوند ترافیک عبور نمی‌دهند.",
+          "prompt": "Switch(config)#",
+          "syntax": ["vlan <vlan-id>", " name <name>"],
+          "params": [
+            { "name": "<vlan-id>", "desc": "شماره‌ی VLAN بین 2 تا 4094. شماره‌ی 1 پیش‌فرض است و 1002 تا 1005 رزرو شده‌اند." },
+            { "name": "<name>", "desc": "اسم دلخواه بدون فاصله، مثل STAFF یا VOICE." }
+          ],
+          "example": ["configure terminal", "vlan 10", " name STAFF", "end"]
+        },
+        {
+          "id": "access-port",
+          "title": "پورت access (اتصال کامپیوتر یا پرینتر)",
+          "summary": "پورت را عضو یک VLAN می‌کند. ترافیک روی این پورت بدون تگ است و دستگاه متصل اصلاً از وجود VLAN خبر ندارد.",
+          "prompt": "Switch(config-if)#",
+          "syntax": ["interface <interface>", " switchport mode access", " switchport access vlan <vlan-id>"],
+          "params": [
+            { "name": "<interface>", "desc": "پورت موردنظر. برای چند پورت با هم: interface range gi0/1 - 12" },
+            { "name": "<vlan-id>", "desc": "VLANی که این پورت عضوش می‌شود." }
+          ],
+          "example": ["configure terminal", "interface gi0/5", " switchport mode access", " switchport access vlan 10", " spanning-tree portfast", "end"],
+          "note": "spanning-tree portfast باعث می‌شود پورت بدون ۳۰ ثانیه انتظار بالا بیاید. فقط روی پورتی بزن که به دستگاه نهایی وصل است، نه به سوییچ دیگر."
+        },
+        {
+          "id": "trunk-port",
+          "title": "ترانک کردن پورت (اتصال به سوییچ یا روتر دیگر)",
+          "summary": "پورت ترانک چند VLAN را هم‌زمان عبور می‌دهد و هر فریم را با شماره‌ی VLANش تگ می‌زند (802.1Q). لینک بین دو سوییچ تقریباً همیشه ترانک است.",
+          "prompt": "Switch(config-if)#",
+          "syntax": ["interface <interface>", " switchport trunk encapsulation dot1q", " switchport mode trunk", " switchport trunk allowed vlan <vlan-list>", " switchport trunk native vlan <native-vlan>"],
+          "params": [
+            { "name": "encapsulation dot1q", "desc": "فقط روی سوییچ‌هایی لازم است که ISL را هم پشتیبانی می‌کنند (مثل 3560 و 3750). روی 2960 این خط خطا می‌دهد؛ حذفش کن." },
+            { "name": "<vlan-list>", "desc": "VLANهایی که اجازه‌ی عبور دارند، با کاما یا بازه: 10,20,30-35. اگر این خط را نزنی همه‌ی VLANها عبور می‌کنند." },
+            { "name": "<native-vlan>", "desc": "VLANی که بدون تگ عبور می‌کند (پیش‌فرض 1). باید در دو سر لینک یکسان باشد." }
+          ],
+          "example": ["configure terminal", "interface gi0/24", " switchport mode trunk", " switchport trunk allowed vlan 10,20,99", " switchport trunk native vlan 99", "end"],
+          "note": "خطرناک‌ترین اشتباه: برای اضافه کردن یک VLAN به ترانک موجود حتماً از allowed vlan add استفاده کن. بدون add، لیست قبلی پاک و فقط VLAN جدید مجاز می‌شود و بقیه‌ی شبکه قطع می‌شود."
+        },
+        {
+          "id": "trunk-add",
+          "title": "اضافه یا حذف VLAN از ترانک موجود",
+          "summary": "بدون دست زدن به بقیه‌ی لیست، یک VLAN را به ترانک اضافه یا از آن حذف می‌کند.",
+          "prompt": "Switch(config-if)#",
+          "syntax": ["switchport trunk allowed vlan add <vlan-list>", "switchport trunk allowed vlan remove <vlan-list>"],
+          "params": [
+            { "name": "<vlan-list>", "desc": "یک یا چند VLAN، مثل 40 یا 40,50." }
+          ],
+          "example": ["configure terminal", "interface gi0/24", " switchport trunk allowed vlan add 40", "end"]
+        },
+        {
+          "id": "vlan-verify",
+          "title": "بررسی VLANها و ترانک‌ها",
+          "summary": "بعد از هر تغییر با این دو دستور نتیجه را چک کن: اولی نشان می‌دهد هر پورت عضو کدام VLAN است، دومی ترانک‌ها و VLANهای مجاز روی هرکدام را.",
+          "prompt": "Switch#",
+          "syntax": ["show vlan brief", "show interfaces trunk", "show interfaces <interface> switchport"],
+          "example": ["show vlan brief", "show interfaces trunk"]
+        }
+      ]
+    },
+    {
+      "title": "پورت‌ها و آدرس IP",
+      "items": [
+        {
+          "id": "if-status",
+          "title": "وضعیت پورت‌ها",
+          "summary": "یک نگاه سریع به همه‌ی پورت‌ها: کدام بالا است، با چه سرعتی، عضو کدام VLAN. connected یعنی سالم، notconnect یعنی کابلی وصل نیست، err-disabled یعنی سوییچ پورت را به‌خاطر خطا بسته است.",
+          "prompt": "Switch#",
+          "syntax": ["show interfaces status", "show ip interface brief", "show interfaces <interface>"],
+          "example": ["show interfaces status"],
+          "note": "show interfaces <interface> شمارنده‌ی خطاها (CRC، input errors) را هم نشان می‌دهد؛ بالا رفتن CRC معمولاً یعنی کابل یا پورت خراب است."
+        },
+        {
+          "id": "if-desc",
+          "title": "توضیح، خاموش و روشن کردن پورت",
+          "summary": "روی هر پورت بنویس به چه چیزی وصل است؛ شش ماه بعد لازمت می‌شود. shutdown پورت را از نظر مدیریتی خاموش می‌کند.",
+          "prompt": "Switch(config-if)#",
+          "syntax": ["interface <interface>", " description <text>", " shutdown", " no shutdown"],
+          "example": ["configure terminal", "interface gi0/5", " description Reception printer", " no shutdown", "end"],
+          "note": "پورتی که err-disabled شده با یک shutdown و بعد no shutdown دوباره بالا می‌آید."
+        },
+        {
+          "id": "svi",
+          "title": "دادن IP مدیریتی به سوییچ",
+          "summary": "سوییچ لایه‌ی ۲ روی پورت فیزیکی IP نمی‌گیرد؛ IP را روی اینترفیس مجازی یک VLAN (SVI) می‌گذاری تا بشود به آن SSH زد.",
+          "prompt": "Switch(config)#",
+          "syntax": ["interface vlan <vlan-id>", " ip address <ip> <mask>", " no shutdown", "ip default-gateway <gateway>"],
+          "params": [
+            { "name": "<mask>", "desc": "ماسک به شکل کامل نوشته می‌شود، نه /24. مثلاً 255.255.255.0" },
+            { "name": "<gateway>", "desc": "آدرس روتر همان شبکه، تا سوییچ از شبکه‌های دیگر هم در دسترس باشد." }
+          ],
+          "example": ["configure terminal", "interface vlan 99", " ip address 10.0.99.2 255.255.255.0", " no shutdown", "exit", "ip default-gateway 10.0.99.1", "end"]
+        },
+        {
+          "id": "static-route",
+          "title": "مسیر ثابت و مسیر پیش‌فرض",
+          "summary": "به روتر یا سوییچ لایه‌ی ۳ می‌گوید برای رسیدن به یک شبکه، بسته را به کدام همسایه بدهد.",
+          "prompt": "Router(config)#",
+          "syntax": ["ip route <network> <mask> <next-hop>", "ip route 0.0.0.0 0.0.0.0 <next-hop>"],
+          "params": [
+            { "name": "<network> <mask>", "desc": "شبکه‌ی مقصد، مثل 192.168.20.0 255.255.255.0" },
+            { "name": "<next-hop>", "desc": "آدرس روتر بعدی در مسیر. 0.0.0.0 0.0.0.0 یعنی «هر مقصد دیگری» یا همان مسیر پیش‌فرض." }
+          ],
+          "example": ["configure terminal", "ip route 192.168.20.0 255.255.255.0 10.0.0.2", "ip route 0.0.0.0 0.0.0.0 10.0.0.1", "end", "show ip route"]
+        }
+      ]
+    },
+    {
+      "title": "امنیت و دسترسی",
+      "items": [
+        {
+          "id": "ssh-enable",
+          "title": "فعال کردن SSH و بستن Telnet",
+          "summary": "Telnet رمز را بدون رمزنگاری می‌فرستد. این دستورها کاربر محلی می‌سازند، کلید RSA تولید می‌کنند و خطوط vty را فقط روی SSH باز می‌گذارند.",
+          "prompt": "Switch(config)#",
+          "syntax": ["hostname <name>", "ip domain-name <domain>", "username <user> privilege 15 secret <password>", "crypto key generate rsa modulus 2048", "ip ssh version 2", "line vty 0 15", " transport input ssh", " login local"],
+          "params": [
+            { "name": "hostname و ip domain-name", "desc": "هر دو برای ساختن کلید RSA لازم‌اند؛ بدون آن‌ها دستور crypto key خطا می‌دهد." },
+            { "name": "secret", "desc": "رمز را هش‌شده ذخیره می‌کند. از password استفاده نکن که قابل برگرداندن است." }
+          ],
+          "example": ["configure terminal", "hostname SW-FLOOR1", "ip domain-name office.local", "username netadmin privilege 15 secret CHANGE-ME", "crypto key generate rsa modulus 2048", "ip ssh version 2", "line vty 0 15", " transport input ssh", " login local", "end"],
+          "note": "قبل از بستن جلسه‌ی فعلی، از یک پنجره‌ی دیگر SSH را امتحان کن تا اگر اشتباهی شد پشت در نمانی."
+        },
+        {
+          "id": "port-security",
+          "title": "Port security (محدود کردن دستگاه‌های یک پورت)",
+          "summary": "تعداد MACهایی که روی یک پورت access مجازند را محدود می‌کند تا کسی سوییچ یا دستگاه ناشناس وصل نکند.",
+          "prompt": "Switch(config-if)#",
+          "syntax": ["switchport port-security", "switchport port-security maximum <count>", "switchport port-security mac-address sticky", "switchport port-security violation <restrict|shutdown>"],
+          "params": [
+            { "name": "sticky", "desc": "اولین MACهایی که می‌بیند را یاد می‌گیرد و در کانفیگ می‌نویسد." },
+            { "name": "violation", "desc": "restrict ترافیک دستگاه اضافه را دور می‌ریزد و لاگ می‌کند؛ shutdown کل پورت را err-disabled می‌کند." }
+          ],
+          "example": ["configure terminal", "interface gi0/5", " switchport mode access", " switchport port-security", " switchport port-security maximum 2", " switchport port-security mac-address sticky", " switchport port-security violation restrict", "end"]
+        }
+      ]
+    },
+    {
+      "title": "عیب‌یابی",
+      "items": [
+        {
+          "id": "mac-table",
+          "title": "پیدا کردن اینکه یک دستگاه به کدام پورت وصل است",
+          "summary": "جدول MAC نشان می‌دهد هر آدرس فیزیکی از کدام پورت دیده شده. اگر پورت ترانک بود، دستگاه پشت سوییچ بعدی است.",
+          "prompt": "Switch#",
+          "syntax": ["show mac address-table", "show mac address-table address <mac>", "show mac address-table interface <interface>"],
+          "params": [
+            { "name": "<mac>", "desc": "به شکل سیسکو با نقطه: aabb.ccdd.eeff" }
+          ],
+          "example": ["show mac address-table address aabb.ccdd.eeff"]
+        },
+        {
+          "id": "neighbors",
+          "title": "دیدن دستگاه‌های همسایه",
+          "summary": "CDP نشان می‌دهد هر پورت به کدام دستگاه سیسکو و کدام پورتِ آن وصل است؛ برای کشیدن نقشه‌ی شبکه عالی است. LLDP همین کار را برای دستگاه‌های غیرسیسکو می‌کند.",
+          "prompt": "Switch#",
+          "syntax": ["show cdp neighbors", "show cdp neighbors detail", "show lldp neighbors"],
+          "example": ["show cdp neighbors detail"]
+        },
+        {
+          "id": "health",
+          "title": "سلامت دستگاه: نسخه، CPU، حافظه، لاگ",
+          "summary": "اولین دستورهایی که وقتی دستگاه کند یا ناپایدار است باید ببینی.",
+          "prompt": "Switch#",
+          "syntax": ["show version", "show processes cpu sorted", "show memory statistics", "show logging", "show environment all"],
+          "params": [
+            { "name": "show version", "desc": "مدل، نسخه‌ی IOS، مدت روشن بودن و دلیل آخرین ری‌استارت." },
+            { "name": "show processes cpu sorted", "desc": "درصد CPU در ۵ ثانیه، ۱ دقیقه و ۵ دقیقه‌ی اخیر و پردازه‌های پرمصرف." }
+          ],
+          "example": ["show processes cpu sorted | exclude 0.00"]
+        }
+      ]
+    }
+  ]
+}

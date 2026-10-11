@@ -1,0 +1,14 @@
+{
+  "bundle": {
+    "active": true,
+    "category": "Utility",
+    "shortDescription": "Network device companion for amvault",
+    "longDescription": "List, monitor and manage network devices, with sign-in details served by amvault.",
+    "externalBin": ["binaries/nettool-engine"],
+    "linux": {
+      "deb": {
+        "depends": ["iputils-ping", "iproute2", "openssh-client"]
+      }
+    }
+  }
+}

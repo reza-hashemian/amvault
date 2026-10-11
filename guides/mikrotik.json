@@ -1,0 +1,211 @@
+{
+  "platform": "mikrotik",
+  "label": "MikroTik",
+  "groups": [
+    {
+      "title": "پایه و پشتیبان‌گیری",
+      "items": [
+        {
+          "id": "structure",
+          "title": "ساختار دستورها در RouterOS",
+          "summary": "دستورها مثل مسیر پوشه‌اند: اول مسیر منو، بعد عمل (print، add، set، remove)، بعد مقدارها به شکل name=value. با Tab کامل می‌شوند و با ? راهنمای همان منو را می‌بینی.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/<menu> <submenu> print", "/<menu> <submenu> add <name>=<value>", "/<menu> <submenu> set <number> <name>=<value>", "/<menu> <submenu> remove <number>"],
+          "params": [
+            { "name": "<number>", "desc": "شماره‌ی ردیفی که آخرین print نشان داده. به‌جایش می‌توانی [find name=...] بنویسی که مطمئن‌تر است." }
+          ],
+          "example": ["/ip address print", "/interface print"]
+        },
+        {
+          "id": "identity",
+          "title": "نام دستگاه و مشخصات سخت‌افزار",
+          "summary": "اسم دستگاه را عوض می‌کند و مدل، نسخه‌ی RouterOS، مصرف CPU و حافظه‌ی آزاد را نشان می‌دهد.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/system identity set name=<name>", "/system resource print", "/system routerboard print"],
+          "example": ["/system identity set name=R-CORE", "/system resource print"]
+        },
+        {
+          "id": "backup",
+          "title": "پشتیبان‌گیری از تنظیمات",
+          "summary": "دو نوع پشتیبان هست: export یک فایل متنی خوانا می‌سازد که روی هر دستگاهی قابل اجرا و قابل مقایسه است؛ backup یک فایل باینری کامل است که فقط روی همان مدل برمی‌گردد.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/export file=<name>", "/export show-sensitive file=<name>", "/system backup save name=<name> password=<password>"],
+          "params": [
+            { "name": "show-sensitive", "desc": "در RouterOS 7 رمزها پیش‌فرض در export نمی‌آیند؛ با این گزینه می‌آیند. فایل حاصل را مثل رمز نگه دار." },
+            { "name": "password", "desc": "فایل backup را رمزگذاری می‌کند. بدون آن، فایل رمزنشده است." }
+          ],
+          "example": ["/export file=config-before-change", "/system backup save name=full-backup password=CHANGE-ME"],
+          "note": "قبل از هر تغییر بزرگ یک export بگیر. فایل‌ها در منوی Files می‌نشینند و باید از دستگاه بیرون کشیده شوند."
+        },
+        {
+          "id": "safe-mode",
+          "title": "Safe Mode: تغییر بدون ترس از قطع شدن",
+          "summary": "با Ctrl+X وارد Safe Mode می‌شوی. اگر تغییری بدهی که ارتباطت را قطع کند، روتر خودش همه‌ی تغییرهای آن جلسه را برمی‌گرداند.",
+          "prompt": "[admin@MikroTik] <SAFE>",
+          "syntax": ["Ctrl+X"],
+          "example": ["# Ctrl+X را بزن، تغییر بده، و اگر همه‌چیز درست بود دوباره Ctrl+X"],
+          "note": "قبل از دست زدن به فایروال، بریج یا IP مدیریتی از راه دور، همیشه Safe Mode را روشن کن."
+        }
+      ]
+    },
+    {
+      "title": "آدرس IP، مسیر و DNS",
+      "items": [
+        {
+          "id": "ip-address",
+          "title": "دادن آدرس IP به یک اینترفیس",
+          "summary": "آدرس و ماسک را با هم به شکل CIDR می‌نویسی. اگر پورت عضو بریج است، آدرس را روی خودِ بریج بگذار نه روی پورت.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/ip address add address=<ip>/<prefix> interface=<interface>"],
+          "params": [
+            { "name": "<ip>/<prefix>", "desc": "مثل 192.168.88.1/24" },
+            { "name": "<interface>", "desc": "نام اینترفیس، مثل ether2 یا bridge1 یا vlan10." }
+          ],
+          "example": ["/ip address add address=192.168.88.1/24 interface=bridge1", "/ip address print"]
+        },
+        {
+          "id": "wan-dhcp",
+          "title": "گرفتن IP از مودم یا ISP",
+          "summary": "اگر اینترنت با DHCP می‌رسد، روی پورت WAN یک DHCP client بساز. مسیر پیش‌فرض و DNS را هم خودش می‌گیرد.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/ip dhcp-client add interface=<wan-interface> disabled=no"],
+          "example": ["/ip dhcp-client add interface=ether1 disabled=no", "/ip dhcp-client print"]
+        },
+        {
+          "id": "route",
+          "title": "مسیر پیش‌فرض و مسیر ثابت",
+          "summary": "اگر IP ثابت داری، مسیر پیش‌فرض را دستی اضافه کن. بدون آن روتر نمی‌داند ترافیک اینترنت را به کجا بدهد.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/ip route add dst-address=<network>/<prefix> gateway=<gateway>"],
+          "params": [
+            { "name": "dst-address", "desc": "شبکه‌ی مقصد. 0.0.0.0/0 یعنی مسیر پیش‌فرض." }
+          ],
+          "example": ["/ip route add dst-address=0.0.0.0/0 gateway=203.0.113.1", "/ip route print"]
+        },
+        {
+          "id": "dns",
+          "title": "تنظیم DNS",
+          "summary": "سرورهای DNS روتر را تعیین می‌کند. با allow-remote-requests روتر برای کلاینت‌های شبکه هم DNS می‌شود.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/ip dns set servers=<dns1>,<dns2> allow-remote-requests=yes"],
+          "example": ["/ip dns set servers=1.1.1.1,8.8.8.8 allow-remote-requests=yes"],
+          "note": "اگر allow-remote-requests را روشن می‌کنی، در فایروال پورت 53 را از سمت اینترنت ببند؛ وگرنه روتر در حمله‌های DNS amplification استفاده می‌شود."
+        }
+      ]
+    },
+    {
+      "title": "DHCP و NAT",
+      "items": [
+        {
+          "id": "dhcp-server",
+          "title": "راه‌اندازی DHCP server",
+          "summary": "سه قطعه لازم است: یک pool از آدرس‌ها، خودِ سرور روی یک اینترفیس، و network که gateway و DNS را به کلاینت می‌گوید.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/ip pool add name=<pool> ranges=<first-ip>-<last-ip>", "/ip dhcp-server add name=<name> interface=<interface> address-pool=<pool> disabled=no", "/ip dhcp-server network add address=<network>/<prefix> gateway=<gateway> dns-server=<dns>"],
+          "example": ["/ip pool add name=lan-pool ranges=192.168.88.10-192.168.88.200", "/ip dhcp-server add name=lan-dhcp interface=bridge1 address-pool=lan-pool disabled=no", "/ip dhcp-server network add address=192.168.88.0/24 gateway=192.168.88.1 dns-server=192.168.88.1"],
+          "note": "راه سریع‌تر: /ip dhcp-server setup را بزن و به سؤال‌ها جواب بده؛ همین سه قطعه را خودش می‌سازد."
+        },
+        {
+          "id": "masquerade",
+          "title": "اینترنت دادن به شبکه‌ی داخلی (NAT)",
+          "summary": "آدرس‌های خصوصی شبکه را هنگام خروج از پورت WAN به آدرس عمومی روتر تبدیل می‌کند. بدون این قانون کلاینت‌ها اینترنت ندارند.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/ip firewall nat add chain=srcnat out-interface=<wan-interface> action=masquerade"],
+          "example": ["/ip firewall nat add chain=srcnat out-interface=ether1 action=masquerade"]
+        },
+        {
+          "id": "port-forward",
+          "title": "Port forward (باز کردن یک سرویس داخلی به بیرون)",
+          "summary": "درخواست‌هایی که به یک پورت روی آدرس عمومی می‌رسند را به یک دستگاه داخلی می‌فرستد.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/ip firewall nat add chain=dstnat in-interface=<wan-interface> protocol=<tcp|udp> dst-port=<public-port> action=dst-nat to-addresses=<internal-ip> to-ports=<internal-port>"],
+          "example": ["/ip firewall nat add chain=dstnat in-interface=ether1 protocol=tcp dst-port=8443 action=dst-nat to-addresses=192.168.88.50 to-ports=443"],
+          "note": "هر پورتی که باز می‌کنی از کل اینترنت دیده می‌شود. اگر می‌شود با src-address-list فقط به آدرس‌های مشخص اجازه بده."
+        }
+      ]
+    },
+    {
+      "title": "بریج و VLAN",
+      "items": [
+        {
+          "id": "bridge",
+          "title": "ساختن بریج و اضافه کردن پورت‌ها",
+          "summary": "بریج چند پورت را مثل یک سوییچ به هم وصل می‌کند. در RouterOS همه‌ی کارهای VLAN روی بریج انجام می‌شود.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/interface bridge add name=<bridge>", "/interface bridge port add bridge=<bridge> interface=<interface>"],
+          "example": ["/interface bridge add name=bridge1", "/interface bridge port add bridge=bridge1 interface=ether2", "/interface bridge port add bridge=bridge1 interface=ether3"]
+        },
+        {
+          "id": "vlan-trunk-access",
+          "title": "ترانک و access با VLAN filtering",
+          "summary": "معادل switchport سیسکو. pvid روی پورت یعنی «ترافیک بدون تگ این پورت عضو کدام VLAN است» (پورت access). جدول bridge vlan می‌گوید هر VLAN از کدام پورت‌ها با تگ (ترانک) و از کدام بدون تگ خارج شود.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/interface bridge port set [find interface=<access-port>] pvid=<vlan-id>", "/interface bridge vlan add bridge=<bridge> vlan-ids=<vlan-id> tagged=<bridge>,<trunk-port> untagged=<access-port>", "/interface bridge set <bridge> vlan-filtering=yes"],
+          "params": [
+            { "name": "tagged", "desc": "پورت‌های ترانک. اگر خودِ روتر هم باید در آن VLAN آدرس داشته باشد، نام بریج را هم در tagged بیاور." },
+            { "name": "untagged", "desc": "پورت‌های access این VLAN. باید همان پورت‌هایی باشند که pvid‌شان این VLAN است." },
+            { "name": "vlan-filtering=yes", "desc": "تا این را روشن نکنی هیچ‌کدام از قانون‌های بالا اعمال نمی‌شود. همیشه آخر از همه روشنش کن." }
+          ],
+          "example": ["/interface bridge port set [find interface=ether3] pvid=10", "/interface bridge vlan add bridge=bridge1 vlan-ids=10 tagged=bridge1,ether1 untagged=ether3", "/interface bridge vlan add bridge=bridge1 vlan-ids=20 tagged=bridge1,ether1", "/interface bridge set bridge1 vlan-filtering=yes"],
+          "note": "روشن کردن vlan-filtering اگر VLAN مدیریتی را درست تعریف نکرده باشی ارتباطت را قطع می‌کند. حتماً در Safe Mode انجامش بده."
+        },
+        {
+          "id": "vlan-interface",
+          "title": "دادن IP به یک VLAN (روتینگ بین VLANها)",
+          "summary": "برای اینکه روتر در یک VLAN آدرس داشته باشد و gateway آن شبکه شود، یک اینترفیس VLAN روی بریج می‌سازی.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/interface vlan add name=<name> vlan-id=<vlan-id> interface=<bridge>", "/ip address add address=<ip>/<prefix> interface=<name>"],
+          "example": ["/interface vlan add name=vlan10 vlan-id=10 interface=bridge1", "/ip address add address=10.0.10.1/24 interface=vlan10"]
+        }
+      ]
+    },
+    {
+      "title": "امنیت و فایروال",
+      "items": [
+        {
+          "id": "firewall-input",
+          "title": "فایروال پایه برای محافظت از خودِ روتر",
+          "summary": "chain=input یعنی ترافیکی که مقصدش خودِ روتر است. ترتیب قانون‌ها مهم است: از بالا به پایین خوانده می‌شوند و اولین قانونِ منطبق اجرا می‌شود.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/ip firewall filter add chain=input connection-state=established,related action=accept", "/ip firewall filter add chain=input connection-state=invalid action=drop", "/ip firewall filter add chain=input in-interface=<lan-interface> action=accept", "/ip firewall filter add chain=input action=drop"],
+          "example": ["/ip firewall filter add chain=input connection-state=established,related action=accept comment=\"allow replies\"", "/ip firewall filter add chain=input connection-state=invalid action=drop", "/ip firewall filter add chain=input protocol=icmp action=accept", "/ip firewall filter add chain=input in-interface=bridge1 action=accept comment=\"allow LAN\"", "/ip firewall filter add chain=input action=drop comment=\"drop everything else\""],
+          "note": "قانون آخر همه‌چیز را می‌بندد. اگر از بیرونِ LAN وصل شده‌ای، قبل از آن یک قانون accept برای آدرس خودت بگذار، و در Safe Mode کار کن."
+        },
+        {
+          "id": "users-services",
+          "title": "کاربر جدید و بستن سرویس‌های اضافه",
+          "summary": "کاربر admin با رمز خالی اولین چیزی است که اسکنرها امتحان می‌کنند. کاربر خودت را بساز، admin را غیرفعال کن و سرویس‌هایی که لازم نداری را ببند.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/user add name=<user> group=full password=<password>", "/user disable admin", "/ip service disable telnet,ftp,www,api", "/ip service set ssh address=<allowed-network>/<prefix>"],
+          "params": [
+            { "name": "address", "desc": "سرویس فقط از این شبکه جواب می‌دهد، مثل 192.168.88.0/24." }
+          ],
+          "example": ["/user add name=netadmin group=full password=CHANGE-ME", "/ip service disable telnet,ftp,www", "/ip service set ssh address=192.168.88.0/24", "/ip service print"],
+          "note": "قبل از غیرفعال کردن admin با کاربر جدید وارد شو و مطمئن شو کار می‌کند."
+        }
+      ]
+    },
+    {
+      "title": "پایش و عیب‌یابی",
+      "items": [
+        {
+          "id": "traffic",
+          "title": "دیدن ترافیک زنده",
+          "summary": "monitor-traffic سرعت لحظه‌ای یک پورت را نشان می‌دهد. torch ریزتر است: چه آدرسی با چه پروتکلی چقدر پهنای باند می‌گیرد.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/interface monitor-traffic <interface>", "/tool torch interface=<interface>", "/interface print stats"],
+          "example": ["/tool torch interface=bridge1 src-address=0.0.0.0/0"],
+          "note": "با q یا Ctrl+C از نمایش زنده بیرون می‌آیی."
+        },
+        {
+          "id": "diagnose",
+          "title": "پینگ، مسیر، لاگ و کلاینت‌های DHCP",
+          "summary": "دستورهای روزمره‌ی عیب‌یابی از روی خودِ روتر.",
+          "prompt": "[admin@MikroTik] >",
+          "syntax": ["/ping <address> count=<n>", "/tool traceroute <address>", "/log print", "/ip dhcp-server lease print", "/ip arp print"],
+          "example": ["/ping 8.8.8.8 count=4", "/log print where topics~\"error\"", "/ip dhcp-server lease print"]
+        }
+      ]
+    }
+  ]
+}

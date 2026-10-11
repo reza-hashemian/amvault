@@ -1,0 +1,5 @@
+# The engine's own dependencies. Install into a .venv in this folder; the app
+# uses that interpreter when it exists.
+
+# SSH to devices for monitoring (CPU, memory, interface traffic).
+paramiko>=3.4

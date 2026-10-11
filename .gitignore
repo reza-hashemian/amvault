@@ -1,0 +1,10 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+__pycache__/
+*.pyc
+.venv/
+src-tauri/binaries/
+build/
+*.spec

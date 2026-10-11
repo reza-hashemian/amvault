@@ -1,0 +1,121 @@
+{
+  "platform": "linux",
+  "label": "Linux",
+  "groups": [
+    {
+      "title": "شبکه",
+      "items": [
+        {
+          "id": "ip-show",
+          "title": "آدرس‌ها، کارت‌های شبکه و مسیرها",
+          "summary": "ip جایگزین ifconfig و route قدیمی است. گزینه‌ی -br خروجی را خلاصه و خوانا می‌کند.",
+          "prompt": "$",
+          "syntax": ["ip -br address", "ip -br link", "ip route", "ip route get <address>"],
+          "params": [
+            { "name": "ip route get", "desc": "نشان می‌دهد برای رسیدن به یک آدرس مشخص، از کدام کارت و کدام gateway استفاده می‌شود." }
+          ],
+          "example": ["ip -br address", "ip route get 8.8.8.8"]
+        },
+        {
+          "id": "ports",
+          "title": "چه برنامه‌ای روی چه پورتی گوش می‌دهد",
+          "summary": "وقتی سرویسی در دسترس نیست، اول ببین اصلاً روی پورتش گوش می‌دهد و روی کدام آدرس. 127.0.0.1 یعنی فقط از خودِ سرور در دسترس است.",
+          "prompt": "$",
+          "syntax": ["sudo ss -tulpn", "sudo ss -tulpn | grep <port>"],
+          "params": [
+            { "name": "-tulpn", "desc": "t و u یعنی TCP و UDP، l فقط پورت‌های در حال گوش دادن، p نام برنامه، n بدون تبدیل شماره به اسم." }
+          ],
+          "example": ["sudo ss -tulpn | grep :443"]
+        },
+        {
+          "id": "reach",
+          "title": "تست دسترسی: پینگ، مسیر، پورت، DNS",
+          "summary": "چهار سؤال به ترتیب: مقصد جواب می‌دهد؟ بسته کجا گم می‌شود؟ پورت باز است؟ اسم درست ترجمه می‌شود؟",
+          "prompt": "$",
+          "syntax": ["ping -c <count> <host>", "mtr -rw <host>", "nc -zv <host> <port>", "dig +short <name>"],
+          "params": [
+            { "name": "mtr -rw", "desc": "ترکیب ping و traceroute؛ درصد افت بسته را در هر گام نشان می‌دهد." },
+            { "name": "nc -zv", "desc": "فقط امتحان می‌کند پورت باز است یا نه، بدون فرستادن داده." }
+          ],
+          "example": ["ping -c 4 192.0.2.1", "nc -zv 192.0.2.10 22", "dig +short example.com"]
+        },
+        {
+          "id": "tcpdump",
+          "title": "دیدن بسته‌ها روی کارت شبکه",
+          "summary": "وقتی مطمئن نیستی ترافیک اصلاً به سرور می‌رسد یا نه، tcpdump جواب قطعی می‌دهد.",
+          "prompt": "$",
+          "syntax": ["sudo tcpdump -ni <interface> <filter>"],
+          "params": [
+            { "name": "<filter>", "desc": "مثل port 443 یا host 192.0.2.5 یا ترکیب با and و or." }
+          ],
+          "example": ["sudo tcpdump -ni eth0 host 192.0.2.5 and port 443"]
+        },
+        {
+          "id": "firewall",
+          "title": "باز و بسته کردن پورت در فایروال (ufw)",
+          "summary": "ufw روی Ubuntu و Debian رایج است. قبل از فعال کردن حتماً SSH را مجاز کن وگرنه ارتباطت قطع می‌شود.",
+          "prompt": "$",
+          "syntax": ["sudo ufw allow <port>/<tcp|udp>", "sudo ufw allow from <network> to any port <port>", "sudo ufw status numbered", "sudo ufw delete <number>"],
+          "example": ["sudo ufw allow 22/tcp", "sudo ufw allow from 10.0.0.0/24 to any port 5432", "sudo ufw enable", "sudo ufw status numbered"],
+          "note": "روی RHEL، Rocky و Fedora به‌جای ufw از firewall-cmd استفاده می‌شود: sudo firewall-cmd --add-port=443/tcp --permanent و بعد --reload."
+        }
+      ]
+    },
+    {
+      "title": "سرویس‌ها و لاگ",
+      "items": [
+        {
+          "id": "systemctl",
+          "title": "مدیریت سرویس‌ها",
+          "summary": "status اول چیزی است که باید ببینی: سرویس بالا است یا نه و چند خط آخر لاگش چیست.",
+          "prompt": "$",
+          "syntax": ["systemctl status <service>", "sudo systemctl restart <service>", "sudo systemctl enable --now <service>", "systemctl --failed"],
+          "params": [
+            { "name": "enable --now", "desc": "سرویس را همین الان راه می‌اندازد و برای بالا آمدن خودکار بعد از ری‌استارت هم فعال می‌کند." },
+            { "name": "--failed", "desc": "همه‌ی سرویس‌هایی که با خطا متوقف شده‌اند." }
+          ],
+          "example": ["systemctl status nginx", "sudo systemctl restart nginx"]
+        },
+        {
+          "id": "journal",
+          "title": "خواندن لاگ‌ها",
+          "summary": "journalctl لاگ همه‌ی سرویس‌های systemd را یک‌جا دارد. با -u یک سرویس را جدا می‌کنی و با -f زنده دنبالش می‌کنی.",
+          "prompt": "$",
+          "syntax": ["journalctl -u <service> -n <lines>", "journalctl -u <service> -f", "journalctl -p err --since \"<time>\""],
+          "params": [
+            { "name": "-p err", "desc": "فقط خطاها و بدتر از آن." },
+            { "name": "--since", "desc": "مثل \"1 hour ago\" یا \"2026-01-15 09:00\"." }
+          ],
+          "example": ["journalctl -u ssh -n 50", "journalctl -p err --since \"1 hour ago\""]
+        }
+      ]
+    },
+    {
+      "title": "منابع سیستم",
+      "items": [
+        {
+          "id": "load",
+          "title": "CPU، حافظه و بار سیستم",
+          "summary": "load average سه عدد است: میانگین ۱، ۵ و ۱۵ دقیقه. اگر از تعداد هسته‌های CPU بیشتر باشد، سیستم زیر فشار است.",
+          "prompt": "$",
+          "syntax": ["uptime", "nproc", "free -h", "top -o %CPU", "ps aux --sort=-%mem | head"],
+          "params": [
+            { "name": "free -h", "desc": "ستون available را ببین، نه free؛ لینوکس حافظه‌ی آزاد را برای کش استفاده می‌کند و این طبیعی است." }
+          ],
+          "example": ["uptime", "free -h", "ps aux --sort=-%cpu | head -n 6"]
+        },
+        {
+          "id": "disk",
+          "title": "فضای دیسک",
+          "summary": "پر شدن دیسک شایع‌ترین دلیل از کار افتادن ناگهانی سرویس‌ها است. df می‌گوید کدام پارتیشن پر است و du می‌گوید چه چیزی پرش کرده.",
+          "prompt": "$",
+          "syntax": ["df -h", "sudo du -xh <path> --max-depth=1 | sort -h", "df -i"],
+          "params": [
+            { "name": "df -i", "desc": "تعداد inodeها. دیسکی که فضا دارد ولی inode ندارد هم «پر» حساب می‌شود." }
+          ],
+          "example": ["df -h", "sudo du -xh /var --max-depth=1 | sort -h"]
+        }
+      ]
+    }
+  ]
+}
