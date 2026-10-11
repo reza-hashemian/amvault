@@ -119,3 +119,26 @@ class TestLifecycle(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestVaultLocation(unittest.TestCase):
+    def setUp(self):
+        self.gui = load_gui_module()
+
+    def test_from_source_the_vault_lives_beside_the_app(self):
+        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.assertEqual(self.gui._default_vault_path(), os.path.join(here, "data", "vault.kdbx"))
+
+    def test_an_installed_copy_keeps_it_in_the_users_data_folder(self):
+        from unittest import mock
+
+        with mock.patch.object(sys, "frozen", True, create=True), \
+             mock.patch.object(sys, "platform", "linux"), \
+             mock.patch.dict(os.environ, {"XDG_DATA_HOME": "/home/u/.local/share"}):
+            self.assertEqual(self.gui._default_vault_path(),
+                             "/home/u/.local/share/amvault/vault.kdbx")
+        with mock.patch.object(sys, "frozen", True, create=True), \
+             mock.patch.object(sys, "platform", "darwin"), \
+             mock.patch("os.path.expanduser", return_value="/Users/u"):
+            self.assertEqual(self.gui._default_vault_path(),
+                             "/Users/u/Library/Application Support/amvault/vault.kdbx")

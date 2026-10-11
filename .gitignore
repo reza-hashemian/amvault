@@ -20,3 +20,5 @@ data/
 .idea/
 *.swp
 .DS_Store
+build/
+dist/

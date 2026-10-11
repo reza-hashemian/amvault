@@ -75,6 +75,26 @@ and backups together. `data/` is gitignored, so secrets never reach a repo.
 
 ## Install
 
+**Installers** are on the [releases page](https://github.com/reza-hashemian/amvault/releases):
+a `.deb` for Debian and Ubuntu, a setup `.exe` for Windows, a `.dmg` for macOS
+(Apple silicon). Each carries its own Python and Qt, so nothing else is needed.
+
+```bash
+sudo apt install ./amvault_0.1.0_amd64.deb
+```
+
+An installed copy keeps the vault in your user data folder rather than beside
+the app: `~/.local/share/amvault/` on Linux, `%APPDATA%\amvault\` on Windows,
+`~/Library/Application Support/amvault/` on macOS. To use a vault you already
+have, copy it there as `vault.kdbx`, or start amvault with its path.
+
+The Windows and macOS installers are not code-signed, so the system warns the
+first time: on Windows choose *More info → Run anyway*; on macOS right-click
+the app and choose *Open*. The installers contain the desktop app; the
+scripting CLI below runs from source.
+
+**From source** — the portable layout, where the vault travels with the folder:
+
 **Windows:** double-click `amvault.bat`. It installs everything it needs on the
 first run and starts the app on every run after that. If Python is missing it
 says so and opens the download page. See `WINDOWS-START-HERE.txt` for a

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=amvault
+GenericName=Password Vault
+Comment=Encrypted vault for passwords, SSH keys and network device credentials
+Exec=amvault
+Icon=amvault
+Terminal=false
+Categories=Utility;Security;
+Keywords=password;vault;keepass;ssh;
+StartupWMClass=amvault

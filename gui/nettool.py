@@ -127,7 +127,11 @@ class NetToolLauncher(QObject):
         binary = find_binary()
         self.shutdown()
         session = BrokerSession(self._handle, on_closed=self._on_session_closed)
-        handshake = {"broker": session.handshake(), "python": sys.executable}
+        handshake = {"broker": session.handshake()}
+        if not getattr(sys, "frozen", False):
+            # Offered to a from-source tool as a Python to run its engine
+            # with. An installed amvault is not a Python interpreter.
+            handshake["python"] = sys.executable
 
         env = dict(os.environ, NETTOOL_HANDSHAKE="stdin")
         try:

@@ -65,7 +65,14 @@ def main() -> int:
             answer = ask_person(prompt)
         except (EOFError, KeyboardInterrupt, OSError):
             return 1
-    sys.stdout.write(answer + "\n")
+    data = (answer + "\n").encode("utf-8")
+    try:
+        sys.stdout.buffer.write(data)
+        sys.stdout.flush()
+    except (AttributeError, OSError, ValueError):
+        # A windowed build has no sys.stdout object even when ssh gave the
+        # process a pipe to answer on; write to the descriptor itself.
+        os.write(1, data)
     return 0
 
 

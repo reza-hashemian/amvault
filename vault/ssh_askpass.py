@@ -34,6 +34,17 @@ HELPER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))
                       "amvault_askpass.py")
 
 
+def helper_command() -> str:
+    """How to start the helper, as it is written into the launcher.
+
+    From source that is this Python running the helper script.  An installed
+    copy has no Python to call, so the application itself is the helper.
+    """
+    if getattr(sys, "frozen", False):
+        return f'"{sys.executable}" --askpass'
+    return f'"{sys.executable}" "{HELPER}"'
+
+
 class PasswordOffer:
     """One password, on offer to one ssh session."""
 
@@ -66,12 +77,13 @@ class PasswordOffer:
     def _write_launcher(self) -> str:
         """SSH_ASKPASS must name a single executable, so the helper gets a
         launcher that runs it with this same Python.  It holds no secret."""
+        helper = helper_command()
         if IS_WINDOWS:
             path = os.path.join(self._directory, "askpass.cmd")
-            body = f'@"{sys.executable}" "{HELPER}" %*\r\n'
+            body = f'@{helper} %*\r\n'
         else:
             path = os.path.join(self._directory, "askpass")
-            body = f'#!/bin/sh\nexec "{sys.executable}" "{HELPER}" "$@"\n'
+            body = f'#!/bin/sh\nexec {helper} "$@"\n'
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(body)
         os.chmod(path, stat.S_IRWXU)

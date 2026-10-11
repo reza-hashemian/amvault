@@ -115,6 +115,43 @@ class TestPasswordOffer(unittest.TestCase):
         self.assertTrue(os.path.isfile(HELPER))
 
 
+class TestInstalledCopy(unittest.TestCase):
+    """An installed amvault has no separate Python, so it is its own helper."""
+
+    ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def test_from_source_the_launcher_runs_the_helper_script(self):
+        from vault import ssh_askpass
+        self.assertEqual(ssh_askpass.helper_command(), f'"{sys.executable}" "{HELPER}"')
+
+    def test_when_frozen_the_launcher_runs_the_app_itself(self):
+        from unittest import mock
+        from vault import ssh_askpass
+        with mock.patch.object(sys, "frozen", True, create=True), \
+             mock.patch.object(sys, "executable", "/opt/amvault/amvault"):
+            self.assertEqual(ssh_askpass.helper_command(), '"/opt/amvault/amvault" --askpass')
+
+    def test_the_app_answers_as_a_helper_without_opening_a_window(self):
+        offer = PasswordOffer("hunter2")
+        self.addCleanup(offer.close)
+        environment = {**os.environ, **offer.environment()}
+        environment.pop("DISPLAY", None)          # proves no window is involved
+        environment.pop("WAYLAND_DISPLAY", None)
+        done = subprocess.run(
+            [sys.executable, os.path.join(self.ROOT, "amvault-gui.py"), "--askpass", "admin@host's password: "],
+            capture_output=True, text=True, env=environment, timeout=30, start_new_session=True,
+        )
+        self.assertEqual((done.returncode, done.stdout), (0, "hunter2\n"))
+
+    def test_self_check_imports_everything_and_exits_cleanly(self):
+        done = subprocess.run(
+            [sys.executable, os.path.join(self.ROOT, "amvault-gui.py"), "--self-check"],
+            capture_output=True, text=True, timeout=60,
+            env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+        )
+        self.assertEqual(done.returncode, 0, done.stderr)
+
+
 class TestConnectOffersThePassword(unittest.TestCase):
     def test_variables_ride_on_the_ssh_command_line(self):
         wrapped = ssh_connect.wrap_in_shell(["ssh", "admin@10.0.0.1"], {"A": "x y", "B": "1"})

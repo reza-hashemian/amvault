@@ -20,6 +20,30 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Two jobs that are not "show the window", handled before Qt is imported so
+# they start fast and work with no display.
+#
+# An installed copy has no separate Python to run helper scripts with, so the
+# app is its own helper: ssh starts it with --askpass to collect a password
+# (see vault/ssh_askpass.py).
+if len(sys.argv) > 1 and sys.argv[1] == "--askpass":
+    import amvault_askpass
+
+    sys.argv = [sys.argv[0], *sys.argv[2:]]
+    sys.exit(amvault_askpass.main())
+
+# Used by the release build to prove an installer's contents can actually
+# start: everything the window needs is imported, and nothing is shown.
+if len(sys.argv) > 1 and sys.argv[1] == "--self-check":
+    import PySide6.QtWidgets  # noqa: F401
+    import amvault_keys  # noqa: F401
+    import gui.main_window  # noqa: F401
+    import gui.unlock  # noqa: F401
+    import vault.broker  # noqa: F401
+    import vault.manager  # noqa: F401
+
+    sys.exit(0)
+
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
 
@@ -35,8 +59,23 @@ def _default_vault_path() -> str:
     directory to a USB stick takes the vault, the backups and the app together
     and it all runs from wherever it is plugged in.
     """
+    if getattr(sys, "frozen", False):
+        # Installed from a package: the program's own folder belongs to the
+        # system and is replaced on every update, so the vault goes where the
+        # platform keeps a user's application data.
+        return os.path.join(_user_data_dir(), "vault.kdbx")
     here = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(here, "data", "vault.kdbx")
+
+
+def _user_data_dir() -> str:
+    home = os.path.expanduser("~")
+    if sys.platform == "win32":
+        return os.path.join(os.environ.get("APPDATA") or home, "amvault")
+    if sys.platform == "darwin":
+        return os.path.join(home, "Library", "Application Support", "amvault")
+    return os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.join(home, ".local", "share"),
+                        "amvault")
 
 
 DEFAULT_VAULT = _default_vault_path()
