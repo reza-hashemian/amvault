@@ -1,0 +1,108 @@
+{
+  "platform": "windows",
+  "label": "Windows",
+  "groups": [
+    {
+      "title": "شبکه",
+      "items": [
+        {
+          "id": "ip-show",
+          "title": "آدرس‌ها و کارت‌های شبکه",
+          "summary": "معادل PowerShell برای ipconfig /all، با خروجی‌ای که می‌شود فیلتر و مرتبش کرد.",
+          "prompt": "PS C:\\>",
+          "syntax": ["Get-NetIPConfiguration", "Get-NetAdapter", "Get-NetIPAddress -AddressFamily IPv4"],
+          "params": [
+            { "name": "Get-NetAdapter", "desc": "وضعیت (Up یا Disconnected) و سرعت لینک هر کارت را نشان می‌دهد." }
+          ],
+          "example": ["Get-NetIPConfiguration", "Get-NetAdapter | Format-Table Name, Status, LinkSpeed"]
+        },
+        {
+          "id": "static-ip",
+          "title": "تنظیم IP ثابت و DNS",
+          "summary": "آدرس، ماسک و gateway را روی یک کارت می‌گذارد و بعد سرورهای DNS را تعیین می‌کند.",
+          "prompt": "PS C:\\>",
+          "syntax": ["New-NetIPAddress -InterfaceAlias \"<adapter>\" -IPAddress <ip> -PrefixLength <prefix> -DefaultGateway <gateway>", "Set-DnsClientServerAddress -InterfaceAlias \"<adapter>\" -ServerAddresses <dns1>,<dns2>"],
+          "params": [
+            { "name": "<adapter>", "desc": "نام کارت همان‌طور که Get-NetAdapter نشان می‌دهد، مثل Ethernet." },
+            { "name": "<prefix>", "desc": "طول ماسک به شکل عدد، مثل 24 برای 255.255.255.0." }
+          ],
+          "example": ["New-NetIPAddress -InterfaceAlias \"Ethernet\" -IPAddress 192.0.2.50 -PrefixLength 24 -DefaultGateway 192.0.2.1", "Set-DnsClientServerAddress -InterfaceAlias \"Ethernet\" -ServerAddresses 192.0.2.1,1.1.1.1"],
+          "note": "اگر از راه دور وصل هستی، با عوض شدن IP ارتباطت قطع می‌شود. باید به PowerShell با دسترسی Administrator وارد شده باشی."
+        },
+        {
+          "id": "reach",
+          "title": "تست دسترسی و پورت",
+          "summary": "Test-NetConnection کار ping، traceroute و تست پورت را یک‌جا می‌کند. TcpTestSucceeded : True یعنی پورت باز است.",
+          "prompt": "PS C:\\>",
+          "syntax": ["Test-NetConnection <host>", "Test-NetConnection <host> -Port <port>", "Test-NetConnection <host> -TraceRoute", "Resolve-DnsName <name>"],
+          "example": ["Test-NetConnection 192.0.2.10 -Port 3389", "Resolve-DnsName example.com"]
+        },
+        {
+          "id": "listening",
+          "title": "چه برنامه‌ای روی چه پورتی گوش می‌دهد",
+          "summary": "پورت‌های باز و شناسه‌ی پردازه‌ی صاحب هرکدام را نشان می‌دهد؛ با Get-Process می‌شود اسم برنامه را پیدا کرد.",
+          "prompt": "PS C:\\>",
+          "syntax": ["Get-NetTCPConnection -State Listen", "Get-NetTCPConnection -LocalPort <port> | Select-Object LocalAddress, LocalPort, OwningProcess", "Get-Process -Id <pid>"],
+          "example": ["Get-NetTCPConnection -LocalPort 443 | Select-Object LocalAddress, LocalPort, OwningProcess"]
+        },
+        {
+          "id": "firewall",
+          "title": "باز کردن پورت در فایروال ویندوز",
+          "summary": "یک قانون ورودی می‌سازد. با RemoteAddress می‌توانی آن را به یک شبکه‌ی مشخص محدود کنی.",
+          "prompt": "PS C:\\>",
+          "syntax": ["New-NetFirewallRule -DisplayName \"<name>\" -Direction Inbound -Protocol <TCP|UDP> -LocalPort <port> -Action Allow", "Get-NetFirewallRule -DisplayName \"<name>\"", "Remove-NetFirewallRule -DisplayName \"<name>\""],
+          "example": ["New-NetFirewallRule -DisplayName \"Allow HTTPS\" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow", "New-NetFirewallRule -DisplayName \"RDP from office\" -Direction Inbound -Protocol TCP -LocalPort 3389 -RemoteAddress 10.0.0.0/24 -Action Allow"]
+        }
+      ]
+    },
+    {
+      "title": "سرویس‌ها و لاگ",
+      "items": [
+        {
+          "id": "services",
+          "title": "مدیریت سرویس‌ها",
+          "summary": "وضعیت سرویس را می‌بیند، ری‌استارتش می‌کند و نوع بالا آمدنش را تعیین می‌کند.",
+          "prompt": "PS C:\\>",
+          "syntax": ["Get-Service <name>", "Restart-Service <name>", "Set-Service <name> -StartupType <Automatic|Manual|Disabled>", "Get-Service | Where-Object Status -eq Stopped"],
+          "params": [
+            { "name": "<name>", "desc": "نام کوتاه سرویس (مثل Spooler یا W32Time)، نه نام نمایشی. با * می‌شود جست‌وجو کرد: Get-Service *dns*" }
+          ],
+          "example": ["Get-Service *dns*", "Restart-Service Spooler"]
+        },
+        {
+          "id": "events",
+          "title": "خواندن Event Log",
+          "summary": "آخرین رویدادهای یک لاگ را می‌آورد. Level 2 یعنی Error و Level 3 یعنی Warning.",
+          "prompt": "PS C:\\>",
+          "syntax": ["Get-WinEvent -LogName <System|Application|Security> -MaxEvents <count>", "Get-WinEvent -FilterHashtable @{LogName='<log>'; Level=2; StartTime=(Get-Date).AddHours(-<hours>)}"],
+          "example": ["Get-WinEvent -LogName System -MaxEvents 20", "Get-WinEvent -FilterHashtable @{LogName='System'; Level=2; StartTime=(Get-Date).AddHours(-24)}"]
+        }
+      ]
+    },
+    {
+      "title": "منابع سیستم",
+      "items": [
+        {
+          "id": "cpu-mem",
+          "title": "CPU و حافظه",
+          "summary": "پردازه‌های پرمصرف، درصد CPU لحظه‌ای و حافظه‌ی آزاد.",
+          "prompt": "PS C:\\>",
+          "syntax": ["Get-Process | Sort-Object CPU -Descending | Select-Object -First <count>", "Get-Counter '\\Processor(_Total)\\% Processor Time'", "Get-CimInstance Win32_OperatingSystem | Select-Object FreePhysicalMemory, TotalVisibleMemorySize, LastBootUpTime"],
+          "params": [
+            { "name": "ستون CPU", "desc": "مجموع ثانیه‌های CPU از زمان شروع پردازه است، نه درصد لحظه‌ای. برای درصد لحظه‌ای از Get-Counter استفاده کن." },
+            { "name": "FreePhysicalMemory", "desc": "به کیلوبایت است." }
+          ],
+          "example": ["Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 5 Name, Id, @{n='MemMB';e={[int]($_.WorkingSet64/1MB)}}"]
+        },
+        {
+          "id": "disk",
+          "title": "فضای دیسک",
+          "summary": "اندازه و فضای آزاد هر درایو.",
+          "prompt": "PS C:\\>",
+          "syntax": ["Get-Volume", "Get-PSDrive -PSProvider FileSystem"],
+          "example": ["Get-Volume | Format-Table DriveLetter, FileSystemLabel, @{n='FreeGB';e={[int]($_.SizeRemaining/1GB)}}, @{n='SizeGB';e={[int]($_.Size/1GB)}}"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+[
+  {
+    "id": "demo-1",
+    "title": "Core router",
+    "category": "network",
+    "tags": [
+      "core"
+    ],
+    "address": "192.0.2.1",
+    "has_password": true,
+    "has_key": false,
+    "fields": {
+      "device_type": "router",
+      "vendor": "MikroTik",
+      "model": "CCR2004-16G-2S+",
+      "mgmt_ip": "192.0.2.1",
+      "username": "admin",
+      "location": "Server room",
+      "firmware": "RouterOS 7.15"
+    },
+    "platform": "mikrotik"
+  },
+  {
+    "id": "demo-2",
+    "title": "Access switch, floor 1",
+    "category": "network",
+    "tags": [
+      "access"
+    ],
+    "address": "192.0.2.11",
+    "has_password": true,
+    "has_key": false,
+    "fields": {
+      "device_type": "switch",
+      "vendor": "Cisco",
+      "model": "Catalyst 2960X-48",
+      "mgmt_ip": "192.0.2.11",
+      "username": "netadmin",
+      "location": "Floor 1 rack",
+      "firmware": "IOS 15.2(7)E"
+    },
+    "platform": "cisco_ios"
+  },
+  {
+    "id": "demo-3",
+    "title": "Distribution switch",
+    "category": "network",
+    "tags": [
+      "core"
+    ],
+    "address": "192.0.2.10",
+    "has_password": true,
+    "has_key": false,
+    "fields": {
+      "device_type": "switch",
+      "vendor": "Cisco",
+      "model": "Catalyst 3850",
+      "mgmt_ip": "192.0.2.10",
+      "username": "netadmin",
+      "location": "Server room"
+    },
+    "platform": "cisco_ios"
+  },
+  {
+    "id": "demo-4",
+    "title": "Office access point",
+    "category": "network",
+    "tags": [
+      "wifi"
+    ],
+    "address": "192.0.2.30",
+    "has_password": true,
+    "has_key": false,
+    "fields": {
+      "device_type": "access point",
+      "vendor": "MikroTik",
+      "model": "cAP ax",
+      "mgmt_ip": "192.0.2.30",
+      "username": "admin",
+      "wifi_ssid": "Office",
+      "location": "Floor 1 ceiling"
+    },
+    "platform": "mikrotik"
+  },
+  {
+    "id": "demo-5",
+    "title": "Web server",
+    "category": "ssh_key",
+    "tags": [
+      "linux",
+      "prod"
+    ],
+    "address": "198.51.100.20",
+    "has_password": false,
+    "has_key": true,
+    "fields": {
+      "host": "198.51.100.20",
+      "port": "2222",
+      "username": "deploy",
+      "key_type": "ed25519"
+    },
+    "platform": "linux"
+  },
+  {
+    "id": "demo-6",
+    "title": "Domain controller",
+    "category": "network",
+    "tags": [],
+    "address": "192.0.2.50",
+    "has_password": true,
+    "has_key": false,
+    "fields": {
+      "device_type": "server",
+      "vendor": "Microsoft",
+      "model": "Windows Server 2022",
+      "mgmt_ip": "192.0.2.50",
+      "username": "Administrator",
+      "location": "Server room"
+    },
+    "platform": "windows"
+  },
+  {
+    "id": "demo-7",
+    "title": "Edge firewall",
+    "category": "network",
+    "tags": [
+      "edge"
+    ],
+    "address": "203.0.113.2",
+    "has_password": true,
+    "has_key": false,
+    "fields": {
+      "device_type": "firewall",
+      "vendor": "Fortinet",
+      "model": "FortiGate 60F",
+      "mgmt_ip": "203.0.113.2",
+      "mgmt_port": "8443",
+      "username": "admin",
+      "location": "Server room"
+    },
+    "platform": "unknown"
+  }
+]
