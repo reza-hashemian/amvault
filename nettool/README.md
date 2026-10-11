@@ -1,6 +1,6 @@
 # Net Tool
 
-A desktop companion to [amvault](../%5B03%5D-account-manager) for working with
+A desktop companion to [amvault](../README.md) for working with
 network devices: list them, open an SSH session in your own terminal, and look
 up the command you need without leaving the window.
 
@@ -84,7 +84,8 @@ connection and is then removed.
 
 ## Install
 
-Installers are on the releases page: a `.deb` for Debian and Ubuntu, a setup
+Installers are on amvault's [releases page](https://github.com/reza-hashemian/amvault/releases),
+beside amvault's own: a `.deb` for Debian and Ubuntu, a setup
 `.exe` for Windows and a `.dmg` for macOS (Apple silicon). Each carries the app
 and its engine; nothing else needs installing. amvault finds an installed copy
 on its own.
@@ -98,7 +99,8 @@ first time: on Windows choose *More info → Run anyway*; on macOS right-click
 the app and choose *Open*.
 
 A release is made by pushing a version tag; `.github/workflows/release.yml`
-builds all three and attaches them:
+at the top of the repository builds amvault's installers and these, and
+attaches them all:
 
 ```bash
 git tag v0.1.0 && git push origin v0.1.0
@@ -120,8 +122,9 @@ python3 -m venv .venv                  # the engine's own libraries (SSH)
 Without the `.venv` everything still works except reading CPU, memory and
 traffic; the dashboard says so and falls back to ping.
 
-amvault looks for that binary in a folder named `*net-tool*` beside its own, or
-at the path in `AMVAULT_NETTOOL`. Then, in amvault: **Network tool** (Ctrl+T).
+amvault looks for that binary here, in its `nettool/` folder, then for an
+installed copy; `AMVAULT_NETTOOL` overrides both. Then, in amvault:
+**Network tool** (Ctrl+T).
 
 ## What it stores
 

@@ -134,7 +134,8 @@ a countdown.
 
 **Network tool** in the sidebar (Ctrl+T) opens a separate program for working
 with the devices in the vault: listing them, opening SSH sessions, and looking
-up commands. It lives in its own project, `net-tool`, beside this one.
+up commands. It lives in the [`nettool/`](nettool/) folder of this repository
+and has its own installer on the same releases page.
 
 It opens without asking for the master password again, and stores nothing.
 amvault acts as its credential broker, the way ssh-agent does for ssh:
@@ -150,7 +151,8 @@ amvault acts as its credential broker, the way ssh-agent does for ssh:
 - Locking the vault cuts the tool off until it is unlocked again. Closing
   amvault ends the session.
 
-Set `AMVAULT_NETTOOL` to the tool's executable if it is not in a sibling folder.
+amvault finds the tool in `nettool/` when run from source, or wherever its
+installer put it. `AMVAULT_NETTOOL` overrides both.
 
 ## CLI
 

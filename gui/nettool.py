@@ -46,9 +46,10 @@ class NetToolNotFound(Exception):
 def find_binary() -> str:
     """Locate the network tool's executable.
 
-    `AMVAULT_NETTOOL` wins.  Otherwise look inside this directory (the portable
-    layout, where everything travels on one USB stick) and then in sibling
-    directories (the development layout, where the tool is its own project).
+    `AMVAULT_NETTOOL` wins.  Otherwise look in this repository's `nettool/`
+    folder (running from source: a build there, or a binary copied in for the
+    portable layout), then in sibling directories (where the tool lived when
+    it was a separate project), then for a copy put in place by its installer.
     """
     override = os.environ.get("AMVAULT_NETTOOL")
     if override:
